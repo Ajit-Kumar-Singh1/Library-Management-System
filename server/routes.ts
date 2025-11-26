@@ -612,6 +612,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/subscriptions/:id/close", requireAuth, async (req, res) => {
+    try {
+      await storage.closeSubscription(parseInt(req.params.id));
+      res.json({ message: "Subscription closed successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to close subscription" });
+    }
+  });
+
   // ================== PAYMENT ROUTES ==================
   
   app.get("/api/payments/:libraryId", requireAuth, async (req, res) => {

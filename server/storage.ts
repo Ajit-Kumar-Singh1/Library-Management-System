@@ -228,6 +228,9 @@ export class DatabaseStorage implements IStorage {
 
   async getVacantSeatsForShifts(libraryId: number, shiftIds: number[]): Promise<Seat[]> {
     const allSeats = await this.getSeatsByLibrary(libraryId);
+    
+    // For each shift, find which seats are occupied
+    // A seat is only available if it's NOT occupied in ALL of the selected shifts
     const occupiedAllocations = await db.select()
       .from(seatAllocations)
       .where(and(
@@ -236,8 +239,29 @@ export class DatabaseStorage implements IStorage {
         eq(seatAllocations.isActive, true)
       ));
     
-    const occupiedSeatIds = new Set(occupiedAllocations.map(a => a.seatId));
-    return allSeats.filter(s => !occupiedSeatIds.has(s.id) && s.status === "vacant");
+    // Count how many of the selected shifts each seat is occupied in
+    const seatOccupancyCount = new Map<number, Set<number>>();
+    for (const alloc of occupiedAllocations) {
+      if (!seatOccupancyCount.has(alloc.seatId)) {
+        seatOccupancyCount.set(alloc.seatId, new Set());
+      }
+      seatOccupancyCount.get(alloc.seatId)!.add(alloc.shiftId);
+    }
+    
+    // A seat is available if it's not occupied in ANY of the selected shifts
+    // (i.e., a seat occupied in shift A can still be shown if user only selected shift B)
+    return allSeats.filter(s => {
+      const occupiedShifts = seatOccupancyCount.get(s.id);
+      if (!occupiedShifts) return true; // Not occupied in any of the selected shifts
+      
+      // Check if ALL selected shifts are available (seat not occupied in any)
+      for (const shiftId of shiftIds) {
+        if (occupiedShifts.has(shiftId)) {
+          return false; // Occupied in at least one selected shift
+        }
+      }
+      return true;
+    });
   }
 
   async getSeatGrid(libraryId: number): Promise<{ seats: Seat[]; allocations: SeatAllocation[] }> {
@@ -321,8 +345,16 @@ export class DatabaseStorage implements IStorage {
 
   // Subscription operations
   async getSubscriptionsByLibrary(libraryId: number): Promise<Subscription[]> {
+    // Return ALL subscriptions including closed, cancelled, renewed for management view
     return db.select().from(subscriptions)
-      .where(and(eq(subscriptions.libraryId, libraryId), eq(subscriptions.isActive, true)))
+      .where(eq(subscriptions.libraryId, libraryId))
+      .orderBy(desc(subscriptions.createdOn));
+  }
+
+  async getActiveSubscriptionsByLibrary(libraryId: number): Promise<Subscription[]> {
+    // Return only active subscriptions (for operations that need active subs only)
+    return db.select().from(subscriptions)
+      .where(and(eq(subscriptions.libraryId, libraryId), eq(subscriptions.isActive, true), eq(subscriptions.status, "active")))
       .orderBy(desc(subscriptions.createdOn));
   }
 
@@ -348,7 +380,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async cancelSubscription(id: number): Promise<void> {
-    await db.update(subscriptions).set({ status: "cancelled", modifiedOn: new Date() }).where(eq(subscriptions.id, id));
+    await db.update(subscriptions).set({ status: "cancelled", isActive: false, modifiedOn: new Date() }).where(eq(subscriptions.id, id));
+  }
+
+  async closeSubscription(id: number): Promise<void> {
+    // Close subscription means it completed normally - student finished their plan
+    await db.update(subscriptions).set({ status: "closed", isActive: false, modifiedOn: new Date() }).where(eq(subscriptions.id, id));
+    // Also deactivate seat allocations for this subscription's student
+    const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.id, id));
+    if (sub) {
+      await db.update(seatAllocations)
+        .set({ isActive: false })
+        .where(eq(seatAllocations.studentId, sub.studentId));
+    }
   }
 
   async renewSubscription(studentId: number, data: InsertSubscription): Promise<Subscription> {

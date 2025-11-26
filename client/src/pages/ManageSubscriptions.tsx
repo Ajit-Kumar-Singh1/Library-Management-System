@@ -39,6 +39,7 @@ import {
   Plus,
   Ban,
   RefreshCw,
+  CheckCircle,
 } from "lucide-react";
 import type { Subscription, Student, Payment } from "@shared/schema";
 
@@ -116,10 +117,32 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
         description: "The subscription has been cancelled.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/seats"] });
     },
     onError: (error: Error) => {
       toast({
         title: "Failed to Cancel",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const closeMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest("PATCH", `/api/subscriptions/${id}/close`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Subscription Closed",
+        description: "The subscription has been closed successfully. The seat is now available.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/seats"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to Close",
         description: error.message,
         variant: "destructive",
       });
@@ -241,6 +264,10 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
         return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
       case "cancelled":
         return "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300";
+      case "closed":
+        return "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300";
+      case "renewed":
+        return "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300";
       default:
         return "bg-muted text-muted-foreground";
     }
@@ -338,6 +365,7 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="expired">Expired</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
@@ -446,8 +474,25 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
                               className="text-primary hover:text-primary"
                               onClick={() => handleRenewal(sub)}
                               data-testid={`button-renew-${sub.id}`}
+                              title="Renew subscription"
                             >
                               <RefreshCw className="w-4 h-4" />
+                            </Button>
+                          )}
+                          {sub.status === "active" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-blue-600 hover:text-blue-600"
+                              onClick={() => {
+                                if (confirm("Are you sure you want to close this subscription? This means the student has completed their plan and their seat will be released.")) {
+                                  closeMutation.mutate(sub.id);
+                                }
+                              }}
+                              data-testid={`button-close-${sub.id}`}
+                              title="Close subscription (completed)"
+                            >
+                              <CheckCircle className="w-4 h-4" />
                             </Button>
                           )}
                           {sub.status === "active" && (
@@ -461,6 +506,7 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
                                 }
                               }}
                               data-testid={`button-cancel-${sub.id}`}
+                              title="Cancel subscription"
                             >
                               <Ban className="w-4 h-4" />
                             </Button>
