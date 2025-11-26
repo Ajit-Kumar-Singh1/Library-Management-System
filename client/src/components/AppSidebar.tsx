@@ -257,7 +257,7 @@ export function AppSidebar({ selectedLibraryId, onLibraryChange }: AppSidebarPro
                     : user?.username}
                 </span>
                 <span className="text-xs text-muted-foreground capitalize">
-                  {user?.role?.replace("_", " ")}
+                  {user?.role === "super_admin" ? "Creator Admin" : user?.role?.replace("_", " ")}
                 </span>
               </div>
               <ChevronDown className="h-4 w-4 text-muted-foreground" />

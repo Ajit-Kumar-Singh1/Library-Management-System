@@ -12,19 +12,19 @@ export async function seedDatabase() {
     return;
   }
 
-  // Create Super Admin
+  // Create Creator Admin (master user who can manage all libraries)
   const hashedPassword = await bcrypt.hash("admin123", 10);
   await db.insert(users).values({
     username: "superadmin",
     password: hashedPassword,
-    email: "superadmin@olms.com",
-    firstName: "Super",
+    email: "creator@olms.com",
+    firstName: "Creator",
     lastName: "Admin",
     role: "super_admin",
     isActive: true,
     createdBy: "system",
   });
-  console.log("Created super admin user (username: superadmin, password: admin123)");
+  console.log("Created Creator Admin user (username: superadmin, password: admin123)");
 
   // Create Menu Items
   const menuItemsData = [

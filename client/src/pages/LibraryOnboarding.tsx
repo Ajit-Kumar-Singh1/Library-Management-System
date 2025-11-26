@@ -143,7 +143,7 @@ export default function LibraryOnboarding() {
           </div>
           <h3 className="font-medium">Access Denied</h3>
           <p className="text-sm text-muted-foreground max-w-xs">
-            Only Super Admins can access library onboarding
+            Only Creator Admin can access library onboarding
           </p>
         </div>
       </div>

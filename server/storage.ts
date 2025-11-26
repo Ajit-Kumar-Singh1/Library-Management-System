@@ -287,9 +287,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async generateStudentId(libraryId: number): Promise<string> {
-    const result = await db.select({ count: sql<number>`count(*)` }).from(students).where(eq(students.libraryId, libraryId));
-    const count = Number(result[0]?.count || 0) + 1;
-    return `STD${String(count).padStart(6, "0")}`;
+    const result = await db.select({ maxId: sql<number>`COALESCE(MAX(id), 0)` }).from(students);
+    const nextId = Number(result[0]?.maxId || 0) + 1;
+    return `STD${String(nextId).padStart(6, "0")}`;
   }
 
   // Subscription operations
