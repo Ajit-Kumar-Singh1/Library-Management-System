@@ -228,7 +228,9 @@ export default function SeatManagement({ libraryId }: LibraryContextProps) {
         <Card>
           <CardContent className="p-4 text-center">
             <p className="text-2xl font-semibold">{stats.total}</p>
-            <p className="text-xs text-muted-foreground">Total Seats</p>
+            <p className="text-xs text-muted-foreground">
+              {selectedShift === "all" ? "Total Slots" : "Total Seats"}
+            </p>
           </CardContent>
         </Card>
         <Card>

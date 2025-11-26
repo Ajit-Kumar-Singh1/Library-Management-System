@@ -25,6 +25,7 @@ import ExpenseTracker from "@/pages/ExpenseTracker";
 import RevenueTracker from "@/pages/RevenueTracker";
 import Reports from "@/pages/Reports";
 import UserManagement from "@/pages/UserManagement";
+import AccessManagement from "@/pages/AccessManagement";
 import LibraryOnboarding from "@/pages/LibraryOnboarding";
 import NotFound from "@/pages/not-found";
 
@@ -103,6 +104,7 @@ function AppContent() {
               <Route path="/expense-tracker" component={() => <ExpenseTracker libraryId={effectiveLibraryId} />} />
               <Route path="/revenue-tracker" component={() => <RevenueTracker libraryId={effectiveLibraryId} />} />
               <Route path="/user-management" component={() => <UserManagement libraryId={effectiveLibraryId} />} />
+              <Route path="/access-management" component={() => <AccessManagement libraryId={effectiveLibraryId} />} />
               <Route path="/library-onboarding" component={LibraryOnboarding} />
               <Route component={NotFound} />
             </Switch>

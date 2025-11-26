@@ -267,6 +267,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/users/:id/permissions", requireAuth, async (req, res) => {
+    try {
+      const permissions = await storage.getUserPermissions(req.params.id);
+      res.json(permissions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch permissions" });
+    }
+  });
+
+  // ================== MENU ITEMS ROUTES ==================
+
+  app.get("/api/menu-items", requireAuth, async (req, res) => {
+    try {
+      const menuItems = await storage.getAllMenuItems();
+      res.json(menuItems);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch menu items" });
+    }
+  });
+
   // ================== SHIFT ROUTES ==================
   
   app.get("/api/shifts/:libraryId", requireAuth, async (req, res) => {
@@ -392,7 +412,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/students", requireAuth, async (req, res) => {
     try {
-      const { libraryId, shiftIds, seatId, planStartDate, planEndDate, subscriptionCost, paidAmount, discount, securityDeposit, ...studentData } = req.body;
+      const { 
+        libraryId, shiftIds, seatId, planStartDate, planEndDate, 
+        subscriptionCost, discount, securityDeposit,
+        paymentMode, cashAmount, onlineAmount, transactionId,
+        ...studentData 
+      } = req.body;
       
       // Generate student ID
       const studentId = await storage.generateStudentId(libraryId);
@@ -413,9 +438,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const shiftStart = selectedShifts.sort((a, b) => a.startTime.localeCompare(b.startTime))[0]?.startTime || "06:00";
       const shiftEnd = selectedShifts.sort((a, b) => b.endTime.localeCompare(a.endTime))[0]?.endTime || "12:00";
 
-      // Create subscription
+      // Calculate payment amounts
       const cost = parseFloat(subscriptionCost || "0");
-      const paid = parseFloat(paidAmount || "0");
+      const cash = parseFloat(cashAmount || "0");
+      const online = parseFloat(onlineAmount || "0");
+      const paid = paymentMode === "both" ? cash + online : (paymentMode === "cash" ? cash : online);
       const disc = parseFloat(discount || "0");
       const security = parseFloat(securityDeposit || "0");
       const pending = Math.max(0, cost - paid - disc);
@@ -452,15 +479,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create payment record if paid amount > 0
-      if (paid > 0) {
+      // Create payment records based on payment mode
+      if (paymentMode === "both") {
+        // Create separate payment records for cash and online
+        if (cash > 0) {
+          await storage.createPayment({
+            libraryId,
+            studentId: student.id,
+            subscriptionId: subscription.id,
+            amount: String(cash),
+            paymentDate: planStartDate,
+            paymentMode: "cash",
+            status: "completed",
+            createdBy: req.session.userId,
+          });
+        }
+        if (online > 0) {
+          await storage.createPayment({
+            libraryId,
+            studentId: student.id,
+            subscriptionId: subscription.id,
+            amount: String(online),
+            paymentDate: planStartDate,
+            paymentMode: "online",
+            transactionId: transactionId || undefined,
+            status: "completed",
+            createdBy: req.session.userId,
+          });
+        }
+      } else if (paid > 0) {
+        // Single payment record for cash or online only
         await storage.createPayment({
           libraryId,
           studentId: student.id,
           subscriptionId: subscription.id,
           amount: String(paid),
           paymentDate: planStartDate,
-          paymentMode: "cash",
+          paymentMode: paymentMode || "cash",
+          transactionId: paymentMode === "online" ? (transactionId || undefined) : undefined,
           status: "completed",
           createdBy: req.session.userId,
         });

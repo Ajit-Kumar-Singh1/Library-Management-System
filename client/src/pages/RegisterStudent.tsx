@@ -44,9 +44,12 @@ const registerStudentSchema = z.object({
   planStartDate: z.string().min(1, "Plan start date is required"),
   planEndDate: z.string().min(1, "Plan end date is required"),
   subscriptionCost: z.string().min(1, "Subscription cost is required"),
-  paidAmount: z.string().default("0"),
-  discount: z.string().default("0"),
-  securityDeposit: z.string().default("0"),
+  paymentMode: z.enum(["cash", "online", "both"]).default("cash"),
+  cashAmount: z.string().transform(v => v === "" ? "0" : v).default("0"),
+  onlineAmount: z.string().transform(v => v === "" ? "0" : v).default("0"),
+  transactionId: z.string().optional(),
+  discount: z.string().transform(v => v === "" ? "0" : v).default("0"),
+  securityDeposit: z.string().transform(v => v === "" ? "0" : v).default("0"),
   description: z.string().optional(),
 });
 
@@ -81,12 +84,17 @@ export default function RegisterStudent({ libraryId }: LibraryContextProps) {
       planStartDate: new Date().toISOString().split("T")[0],
       planEndDate: "",
       subscriptionCost: "",
-      paidAmount: "0",
+      paymentMode: "cash",
+      cashAmount: "0",
+      onlineAmount: "0",
+      transactionId: "",
       discount: "0",
       securityDeposit: "0",
       description: "",
     },
   });
+
+  const paymentMode = form.watch("paymentMode");
 
   const { data: shifts, isLoading: shiftsLoading } = useQuery<Shift[]>({
     queryKey: ["/api/shifts", libraryId],
@@ -510,29 +518,6 @@ export default function RegisterStudent({ libraryId }: LibraryContextProps) {
 
                   <FormField
                     control={form.control}
-                    name="paidAmount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Paid Amount</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input 
-                              type="number" 
-                              placeholder="0" 
-                              className="pl-9"
-                              {...field} 
-                              data-testid="input-paid-amount"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
                     name="discount"
                     render={({ field }) => (
                       <FormItem>
@@ -576,6 +561,124 @@ export default function RegisterStudent({ libraryId }: LibraryContextProps) {
                       </FormItem>
                     )}
                   />
+
+                  <FormField
+                    control={form.control}
+                    name="paymentMode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment Mode</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-payment-mode">
+                              <SelectValue placeholder="Select payment mode" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="cash">Cash Only</SelectItem>
+                            <SelectItem value="online">Online Only</SelectItem>
+                            <SelectItem value="both">Cash + Online</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {(paymentMode === "cash" || paymentMode === "both") && (
+                    <FormField
+                      control={form.control}
+                      name="cashAmount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cash Amount</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                              <Input 
+                                type="number" 
+                                placeholder="0" 
+                                className="pl-9"
+                                {...field} 
+                                data-testid="input-cash-amount"
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {(paymentMode === "online" || paymentMode === "both") && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="onlineAmount"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Online Amount</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Input 
+                                  type="number" 
+                                  placeholder="0" 
+                                  className="pl-9"
+                                  {...field} 
+                                  data-testid="input-online-amount"
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="transactionId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Transaction ID</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="Enter transaction ID" 
+                                {...field} 
+                                data-testid="input-transaction-id"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  )}
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none">Total Paid Amount</label>
+                    <div className="relative">
+                      <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input 
+                        type="number" 
+                        placeholder="0" 
+                        className="pl-9 bg-muted"
+                        readOnly
+                        value={
+                          paymentMode === "both" 
+                            ? String(Number(form.watch("cashAmount") || 0) + Number(form.watch("onlineAmount") || 0))
+                            : paymentMode === "cash" 
+                              ? form.watch("cashAmount") || "0"
+                              : form.watch("onlineAmount") || "0"
+                        }
+                        data-testid="input-paid-amount"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <FormField

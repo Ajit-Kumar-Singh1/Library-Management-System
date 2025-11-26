@@ -60,6 +60,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   "expense-tracker": Receipt,
   "revenue-tracker": DollarSign,
   "user-management": UserCog,
+  "access-management": Settings,
   "library-onboarding": Building2,
   settings: Settings,
 };
@@ -108,7 +109,7 @@ export function AppSidebar({ selectedLibraryId, onLibraryChange }: AppSidebarPro
   }) || [];
 
   const regularMenuItems = filteredMenuItems.filter(
-    item => !["user-management", "library-onboarding"].includes(item.path.replace("/", ""))
+    item => !["user-management", "access-management", "library-onboarding"].includes(item.path.replace("/", ""))
   );
 
   // Admin menu items - library-onboarding only for super_admin
@@ -117,7 +118,7 @@ export function AppSidebar({ selectedLibraryId, onLibraryChange }: AppSidebarPro
     if (pathName === "library-onboarding") {
       return isSuperAdmin; // Only super_admin sees library onboarding
     }
-    return pathName === "user-management";
+    return pathName === "user-management" || pathName === "access-management";
   });
 
   const userInitials = user?.firstName && user?.lastName 
