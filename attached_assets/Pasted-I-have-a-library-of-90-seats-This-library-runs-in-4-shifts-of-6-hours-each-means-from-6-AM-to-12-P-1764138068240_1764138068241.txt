@@ -1,0 +1,75 @@
+I have a library of 90 seats. This library runs in 4 shifts of 6 hours each, means from 6 AM to 12 PM, 12 PM to 18 PM and 18 PM to 24 PM and 12 00 AM to 6 AM. A person/student can take a subscription of a seat for a single shift or multiple shift all together. Means a student can take subscription for 6 hours or 12 hours or 18 hours or full 24 hours and can book this for a month or can renew same subscription later also. 
+
+I want to create an application to manage all things like Student admission by allotting seat as per required shift and seat availability in that particular shift. 
+Application will be managed by admin or any other user defined in system. 
+
+There will be below pages/UI in application and these will be features:-
+
+Dashboard, Reports, Register Student, Manage Students, Manage Subscriptions, Seat Management, Expense Tracker, Revenue Tracker
+
+All menu should be defined in database only and from there these should be populate in sidebar menu. 
+
+I want to create this application as SaaS, it will be used by different-different library owners so design process in that way. 
+
+
+1). Login Feature:-
+
+There will be multiple user and their role and access will be different. Password will be simple string only instead of hashed password
+For example an admin will have access of all pages while any other user may have access of few limited access only or they may access of page but read only may be. 
+There will be an User Management page where admin can create new users or manage users or delete or updated etc all things. Admin can grant access to the page or read write control just by selecting checkboxes and page name. 
+
+Whenever any user will visit any page or will click any menu link or any button anywhere in application, then user access should be validated first then if user have access then it should be accessed else it should show message to them. 
+
+
+2). Dashboard Feature:-
+
+It should display these details: Total Seats of Library, Total Occupied Seats, Total Active Students, Total Registered Boys and and girls.
+Payment overview of last 6 months, in grid view also and in pie chart also. Recent last 10 expenses, 10 Recent Payments, 10 upcoming renewals, Students with Due Fees (if there is any partial payment have been done.). 
+
+5 Peak Days of Payments in the month.
+
+3). Reports:-
+There will be multiple reports in this page. In future also few more may be added so option should be at backend so thar new reports can also be added. For any report no field name will be hardcoded at UI layer, all should be auto picked which will be mentioned at database layer.
+
+a). Active/Inactive Student Report
+User can see all the active/inactive students who have taken subscriptions, this will contain, StudentId, StudentName, MobileNo, EmailId, Gender, GaurdianName, GaurdianPhone, SeatNo, Status, AdmissionDate,SubscriptionCost,PaidAmount,Discount,PendingAmount, PlanStartDate, PlanEndDate, PlanName, TotalHours, ShiftStart, ShiftEnd, Address, Description
+
+b). Upcoming Subscription Renewals
+ User can see all the active students who have taken subscriptions, this will contain, StudentId, StudentName, MobileNo, Gender, SeatNo,Status, AdmissionDate,SubscriptionCost, PlanStartDate, PlanEndDate, RenewalDate (This will be PlanEndDate only),RenewalAmount (This will be SubscriptionCost), TotalHours, ShiftStart, ShiftEnd
+
+c). Total Expense of Current Month
+ User can track SNo. ,Purpose, 	Subject, Description, Date, Amount
+d). Payment Report of Current Month
+This will contain StudentId, StudentName, MobileNo, SeatNo,Status, AdmissionDate, PaidAmount, Discount, PendingAmount
+
+
+4). Register Student:-
+
+This will contain a form to register a student and allocate a vacant seat as per shift. Shift will be master here, after filling details of students user will select shift and system will check for that particular shift which seat is available. 
+
+While filling form , on selection of Shift vacant seat should come in drop down if that seat is available in that particular shift.
+
+This will contain StudentName, MobileNo, EmailId, Gender, GaurdianName, GaurdianPhone, SeatNo, Status, AdmissionDate,SubscriptionCost,PaidAmount,Discount,PendingAmount, PlanStartDate, PlanEndDate, PlanName, TotalHours, ShiftStart, ShiftEnd, Address, Description
+StudentId will be auto generated like STD000001, STD000002 etc.
+
+After saving details data should be visible below in Grid also.
+
+5). Manage Student:-
+
+This will contain same form type like Register Student (all same fields). There should be a search box also and on click of search button all the saved values should be auto populate in all the fields. All the fields should be editable and for submit two options should be visible one is Renew and second is Update. If user click Renew and status of that subscription is already active then that current record should become inactive and a new fresh entry should be entered with renewed details, else for Update it should updated entered details for that particular student.  
+
+6). Seat Management:-
+
+This will show a grid structure of all total available seats. This should be color coded as well for Vacant, Blocked, Allotted status and is it Allotted to Male or Female and for which shifts also.
+
+
+7). Expense Tracker:-
+
+This will give a form to enter expense details what was Purpose, Subject, Description, Date, Amount etc. 
+After saving details data should be visible below in Grid also.
+
+8). Revenue Tracker:-
+
+Note: Use ASP.NET Core with MVC, and MS SQL Server as database. All the db operations like insert or update or select anything xyz should be done using stored procedures only. All the database table will have these mandatory fields IsActive, CreateOn, CreatedBy, ModifiedOn, ModifiedBy, ManualComments, Description etc. Create this application in such a way that I can download and connect with my local database also. database name is OLMS, User is sa, password is 5588 and I am running database on local laptop/PC name called DYNAMITE
+
+
