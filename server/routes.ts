@@ -48,6 +48,40 @@ async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+// Middleware to check if user has write permission for a specific page
+function requireWriteAccess(path: string) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const user = await storage.getUser(req.session.userId);
+    if (!user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    // Super admin and admin always have write access
+    if (user.role === "super_admin" || user.role === "admin") {
+      return next();
+    }
+    
+    // Check page-level permission for regular users
+    const permissions = await storage.getUserPermissions(user.id);
+    const menuItems = await storage.getAllMenuItems();
+    const menuItem = menuItems.find(m => m.path === path);
+    
+    if (!menuItem) {
+      return res.status(403).json({ message: "Forbidden - Page not found" });
+    }
+    
+    const permission = permissions.find(p => p.menuItemId === menuItem.id);
+    if (!permission || !permission.canWrite) {
+      return res.status(403).json({ message: "Forbidden - Write access required" });
+    }
+    
+    next();
+  };
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session with PostgreSQL store
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -410,7 +444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/students", requireAuth, async (req, res) => {
+  app.post("/api/students", requireAuth, requireWriteAccess("/register-student"), async (req, res) => {
     try {
       const { 
         libraryId, shiftIds, seatId, planStartDate, planEndDate, 
@@ -503,7 +537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/students/:id", requireAuth, async (req, res) => {
+  app.patch("/api/students/:id", requireAuth, requireWriteAccess("/manage-students"), async (req, res) => {
     try {
       const student = await storage.updateStudent(parseInt(req.params.id), {
         ...req.body,
@@ -555,7 +589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/subscriptions/:subscriptionId/renew", requireAuth, async (req, res) => {
+  app.post("/api/subscriptions/:subscriptionId/renew", requireAuth, requireWriteAccess("/manage-subscriptions"), async (req, res) => {
     try {
       const subscriptionId = parseInt(req.params.subscriptionId);
       const { libraryId, planStartDate, planEndDate, subscriptionCost, paidAmount, discount, securityDeposit } = req.body;
@@ -643,7 +677,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/subscriptions/:id/cancel", requireAuth, async (req, res) => {
+  app.patch("/api/subscriptions/:id/cancel", requireAuth, requireWriteAccess("/manage-subscriptions"), async (req, res) => {
     try {
       await storage.cancelSubscription(parseInt(req.params.id));
       res.json({ message: "Subscription cancelled" });
@@ -652,7 +686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/subscriptions/:id/close", requireAuth, async (req, res) => {
+  app.patch("/api/subscriptions/:id/close", requireAuth, requireWriteAccess("/manage-subscriptions"), async (req, res) => {
     try {
       await storage.closeSubscription(parseInt(req.params.id));
       res.json({ message: "Subscription closed successfully" });
@@ -706,7 +740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/payments", requireAuth, async (req, res) => {
+  app.post("/api/payments", requireAuth, requireWriteAccess("/manage-subscriptions"), async (req, res) => {
     try {
       const payment = await storage.createPayment({
         ...req.body,
@@ -734,7 +768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/expenses", requireAuth, async (req, res) => {
+  app.post("/api/expenses", requireAuth, requireWriteAccess("/expense-tracker"), async (req, res) => {
     try {
       const expense = await storage.createExpense({
         ...req.body,
@@ -747,7 +781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/expenses/:id", requireAuth, async (req, res) => {
+  app.delete("/api/expenses/:id", requireAuth, requireWriteAccess("/expense-tracker"), async (req, res) => {
     try {
       await storage.deleteExpense(parseInt(req.params.id));
       res.json({ message: "Expense deleted" });

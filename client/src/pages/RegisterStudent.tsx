@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Form,
   FormControl,
@@ -27,7 +28,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { UserPlus, Loader2, Calendar, IndianRupee } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { UserPlus, Loader2, Calendar, IndianRupee, Lock } from "lucide-react";
 import type { Shift, Seat, Student } from "@shared/schema";
 
 const registerStudentSchema = z.object({
@@ -67,7 +69,10 @@ interface LibraryContextProps {
 export default function RegisterStudent({ libraryId }: LibraryContextProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { canWrite } = useAuth();
   const [selectedShifts, setSelectedShifts] = useState<number[]>([]);
+  
+  const hasWriteAccess = canWrite("/register-student");
 
   const form = useForm<RegisterStudentForm>({
     resolver: zodResolver(registerStudentSchema),
@@ -701,6 +706,15 @@ export default function RegisterStudent({ libraryId }: LibraryContextProps) {
                   )}
                 />
 
+                {!hasWriteAccess && (
+                  <Alert className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800">
+                    <Lock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                    <AlertDescription className="text-yellow-700 dark:text-yellow-300">
+                      You have read-only access to this page. Contact your administrator to request write permissions.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <div className="flex justify-end gap-3">
                   <Button
                     type="button"
@@ -710,12 +724,13 @@ export default function RegisterStudent({ libraryId }: LibraryContextProps) {
                       setSelectedShifts([]);
                     }}
                     data-testid="button-reset"
+                    disabled={!hasWriteAccess}
                   >
                     Reset
                   </Button>
                   <Button 
                     type="submit" 
-                    disabled={registerMutation.isPending}
+                    disabled={registerMutation.isPending || !hasWriteAccess}
                     data-testid="button-register"
                   >
                     {registerMutation.isPending ? (

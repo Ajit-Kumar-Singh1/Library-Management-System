@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Form,
   FormControl,
@@ -33,7 +34,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Search, Loader2, Edit, RefreshCw, IndianRupee } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Users, Search, Loader2, Edit, RefreshCw, IndianRupee, Lock } from "lucide-react";
 import type { Shift, Student, Subscription } from "@shared/schema";
 
 const manageStudentSchema = z.object({
@@ -62,6 +64,7 @@ interface LibraryContextProps {
 export default function ManageStudents({ libraryId }: LibraryContextProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { canWrite } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<StudentWithSubscription | null>(null);
   const [showRenewDialog, setShowRenewDialog] = useState(false);
@@ -72,6 +75,8 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
     paidAmount: "0",
     discount: "0",
   });
+  
+  const hasWriteAccess = canWrite("/manage-students");
 
   const form = useForm<ManageStudentForm>({
     resolver: zodResolver(manageStudentSchema),
@@ -477,12 +482,21 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
                   )}
                 />
 
+                {!hasWriteAccess && selectedStudent && (
+                  <Alert className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800">
+                    <Lock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                    <AlertDescription className="text-yellow-700 dark:text-yellow-300">
+                      You have read-only access. Contact your administrator to request write permissions.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <div className="flex justify-end gap-3">
                   <Button
                     type="button"
                     variant="outline"
                     onClick={handleRenew}
-                    disabled={!selectedStudent || renewMutation.isPending}
+                    disabled={!selectedStudent || renewMutation.isPending || !hasWriteAccess}
                     data-testid="button-renew"
                   >
                     {renewMutation.isPending ? (
@@ -494,7 +508,7 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
                   </Button>
                   <Button 
                     type="submit" 
-                    disabled={!selectedStudent || updateMutation.isPending}
+                    disabled={!selectedStudent || updateMutation.isPending || !hasWriteAccess}
                     data-testid="button-update"
                   >
                     {updateMutation.isPending ? (

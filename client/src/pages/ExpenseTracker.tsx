@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Form,
   FormControl,
@@ -28,7 +29,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Receipt, Plus, Loader2, IndianRupee, Calendar, Trash2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Receipt, Plus, Loader2, IndianRupee, Calendar, Trash2, Lock } from "lucide-react";
 import type { Expense } from "@shared/schema";
 
 const expenseSchema = z.object({
@@ -48,6 +50,9 @@ interface LibraryContextProps {
 export default function ExpenseTracker({ libraryId }: LibraryContextProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { canWrite } = useAuth();
+  
+  const hasWriteAccess = canWrite("/expense-tracker");
 
   const form = useForm<ExpenseForm>({
     resolver: zodResolver(expenseSchema),
@@ -271,10 +276,19 @@ export default function ExpenseTracker({ libraryId }: LibraryContextProps) {
                   )}
                 />
 
+                {!hasWriteAccess && (
+                  <Alert className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800">
+                    <Lock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                    <AlertDescription className="text-yellow-700 dark:text-yellow-300">
+                      You have read-only access. Contact your administrator to request write permissions.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
                 <Button 
                   type="submit" 
                   className="w-full"
-                  disabled={createMutation.isPending}
+                  disabled={createMutation.isPending || !hasWriteAccess}
                   data-testid="button-add-expense"
                 >
                   {createMutation.isPending ? (
@@ -360,16 +374,22 @@ export default function ExpenseTracker({ libraryId }: LibraryContextProps) {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={() => deleteMutation.mutate(expense.id)}
-                            disabled={deleteMutation.isPending}
-                            data-testid={`button-delete-expense-${expense.id}`}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {hasWriteAccess ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => deleteMutation.mutate(expense.id)}
+                              disabled={deleteMutation.isPending}
+                              data-testid={`button-delete-expense-${expense.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground text-xs flex items-center gap-1">
+                              <Lock className="w-3 h-3" />
+                            </span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

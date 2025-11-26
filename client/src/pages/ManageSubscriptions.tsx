@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   CreditCard, 
   Search, 
@@ -40,6 +42,7 @@ import {
   Ban,
   RefreshCw,
   CheckCircle,
+  Lock,
 } from "lucide-react";
 import type { Subscription, Student, Payment } from "@shared/schema";
 
@@ -59,6 +62,7 @@ interface LibraryContextProps {
 export default function ManageSubscriptions({ libraryId }: LibraryContextProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { canWrite } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedSubscription, setSelectedSubscription] = useState<SubscriptionWithDetails | null>(null);
@@ -66,6 +70,8 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
   const [showRenewalDialog, setShowRenewalDialog] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState("cash");
+  
+  const hasWriteAccess = canWrite("/manage-subscriptions");
   
   // Renewal form state
   const [renewalStartDate, setRenewalStartDate] = useState("");
@@ -470,7 +476,7 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
                       </TableCell>
                       <TableCell>
                         <div className="flex justify-end gap-1">
-                          {sub.status === "active" && parseFloat(sub.pendingAmount) > 0 && (
+                          {sub.status === "active" && parseFloat(sub.pendingAmount) > 0 && hasWriteAccess && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -480,7 +486,7 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
                               <Plus className="w-4 h-4" />
                             </Button>
                           )}
-                          {(sub.status === "active" || sub.status === "expired") && (
+                          {(sub.status === "active" || sub.status === "expired") && hasWriteAccess && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -492,7 +498,7 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
                               <RefreshCw className="w-4 h-4" />
                             </Button>
                           )}
-                          {sub.status === "active" && (
+                          {sub.status === "active" && hasWriteAccess && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -508,7 +514,7 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
                               <CheckCircle className="w-4 h-4" />
                             </Button>
                           )}
-                          {sub.status === "active" && (
+                          {sub.status === "active" && hasWriteAccess && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -523,6 +529,12 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
                             >
                               <Ban className="w-4 h-4" />
                             </Button>
+                          )}
+                          {!hasWriteAccess && (
+                            <span className="text-muted-foreground text-xs flex items-center gap-1">
+                              <Lock className="w-3 h-3" />
+                              Read only
+                            </span>
                           )}
                         </div>
                       </TableCell>
