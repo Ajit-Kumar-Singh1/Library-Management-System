@@ -55,10 +55,18 @@ Preferred communication style: Simple, everyday language.
 - Migration management through drizzle-kit
 
 **API Design:**
-- RESTful endpoints organized by feature domain
+- RESTful endpoints organized by feature domain using path parameters
+- URL pattern: `/api/<resource>/:libraryId` for library-scoped endpoints
+- Query parameters used for optional filters (shiftIds, status, etc.)
 - Session-based authentication with bcrypt password hashing
 - Role-based middleware (`requireAuth`, `requireAdmin`, `requireSuperAdmin`)
 - Validation using Zod schemas shared between client and server
+
+**Query Client URL Building:**
+- Custom `buildUrl` function in `queryClient.ts` handles URL construction
+- Skips null, undefined, and empty string values in query keys
+- Converts object query key parts to URL query parameters
+- Arrays in objects are JSON-stringified as query params
 
 **Storage Layer:**
 - Storage abstraction in `server/storage.ts` providing CRUD operations

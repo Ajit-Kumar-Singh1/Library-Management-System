@@ -89,7 +89,7 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
   });
 
   const { data: students, isLoading: studentsLoading } = useQuery<StudentWithSubscription[]>({
-    queryKey: ["/api/students", libraryId, searchQuery],
+    queryKey: ["/api/students", libraryId, { searchQuery }],
     enabled: !!libraryId,
   });
 
@@ -100,7 +100,7 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
 
   const searchMutation = useMutation({
     mutationFn: async (query: string) => {
-      const response = await apiRequest("GET", `/api/students/search?libraryId=${libraryId}&query=${encodeURIComponent(query)}`);
+      const response = await apiRequest("GET", `/api/students/search/${libraryId}/${encodeURIComponent(query)}`);
       return response;
     },
     onSuccess: (data: StudentWithSubscription[]) => {

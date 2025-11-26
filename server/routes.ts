@@ -200,9 +200,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ================== USER ROUTES ==================
   
-  app.get("/api/users", requireAdmin, async (req, res) => {
+  app.get("/api/users/:libraryId?", requireAdmin, async (req, res) => {
     try {
-      const libraryId = req.query.libraryId ? parseInt(req.query.libraryId as string) : null;
+      const libraryId = req.params.libraryId ? parseInt(req.params.libraryId) : null;
       const user = await storage.getUser(req.session.userId!);
       
       if (user?.role === "super_admin") {
@@ -269,9 +269,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ================== SHIFT ROUTES ==================
   
-  app.get("/api/shifts", requireAuth, async (req, res) => {
+  app.get("/api/shifts/:libraryId", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
+      const libraryId = parseInt(req.params.libraryId);
       if (!libraryId) {
         return res.status(400).json({ message: "Library ID required" });
       }
@@ -284,10 +284,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ================== SEAT ROUTES ==================
   
-  app.get("/api/seats/vacant", requireAuth, async (req, res) => {
+  app.get("/api/seats/vacant/:libraryId", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
-      const shiftIds = JSON.parse(req.query.shiftIds as string || "[]");
+      const libraryId = parseInt(req.params.libraryId);
+      const shiftIdsParam = req.query.shiftIds as string;
+      const shiftIds = shiftIdsParam ? JSON.parse(shiftIdsParam) : [];
       if (!libraryId || shiftIds.length === 0) {
         return res.json([]);
       }
@@ -298,9 +299,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/seats/grid", requireAuth, async (req, res) => {
+  app.get("/api/seats/grid/:libraryId", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
+      const libraryId = parseInt(req.params.libraryId);
       if (!libraryId) {
         return res.status(400).json({ message: "Library ID required" });
       }
@@ -332,9 +333,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ================== STUDENT ROUTES ==================
   
-  app.get("/api/students", requireAuth, async (req, res) => {
+  app.get("/api/students/:libraryId", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
+      const libraryId = parseInt(req.params.libraryId);
       if (!libraryId) {
         return res.json([]);
       }
@@ -345,9 +346,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/students/recent", requireAuth, async (req, res) => {
+  app.get("/api/students/recent/:libraryId", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
+      const libraryId = parseInt(req.params.libraryId);
       if (!libraryId) {
         return res.json([]);
       }
@@ -358,10 +359,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/students/search", requireAuth, async (req, res) => {
+  app.get("/api/students/search/:libraryId/:query", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
-      const query = req.query.query as string;
+      const libraryId = parseInt(req.params.libraryId);
+      const query = req.params.query;
       if (!libraryId || !query) {
         return res.json([]);
       }
@@ -468,9 +469,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ================== SUBSCRIPTION ROUTES ==================
   
-  app.get("/api/subscriptions", requireAuth, async (req, res) => {
+  app.get("/api/subscriptions/:libraryId", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
+      const libraryId = parseInt(req.params.libraryId);
       if (!libraryId) {
         return res.json([]);
       }
@@ -562,9 +563,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ================== PAYMENT ROUTES ==================
   
-  app.get("/api/payments", requireAuth, async (req, res) => {
+  app.get("/api/payments/:libraryId", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
+      const libraryId = parseInt(req.params.libraryId);
       if (!libraryId) {
         return res.json([]);
       }
@@ -592,9 +593,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/payments/summary", requireAuth, async (req, res) => {
+  app.get("/api/payments/summary/:libraryId", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
+      const libraryId = parseInt(req.params.libraryId);
       if (!libraryId) {
         return res.json({ totalRevenue: 0, monthlyRevenue: 0, paymentCount: 0, averagePayment: 0 });
       }
@@ -620,9 +621,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ================== EXPENSE ROUTES ==================
   
-  app.get("/api/expenses", requireAuth, async (req, res) => {
+  app.get("/api/expenses/:libraryId", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
+      const libraryId = parseInt(req.params.libraryId);
       if (!libraryId) {
         return res.json([]);
       }
@@ -657,9 +658,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ================== DASHBOARD ROUTES ==================
   
-  app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
+  app.get("/api/dashboard/stats/:libraryId", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
+      const libraryId = parseInt(req.params.libraryId);
       if (!libraryId) {
         return res.json({});
       }
@@ -670,9 +671,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/dashboard/payment-overview", requireAuth, async (req, res) => {
+  app.get("/api/dashboard/payment-overview/:libraryId", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
+      const libraryId = parseInt(req.params.libraryId);
       if (!libraryId) {
         return res.json([]);
       }
@@ -683,9 +684,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/dashboard/recent-expenses", requireAuth, async (req, res) => {
+  app.get("/api/dashboard/recent-expenses/:libraryId", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
+      const libraryId = parseInt(req.params.libraryId);
       if (!libraryId) {
         return res.json([]);
       }
@@ -696,9 +697,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/dashboard/recent-payments", requireAuth, async (req, res) => {
+  app.get("/api/dashboard/recent-payments/:libraryId", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
+      const libraryId = parseInt(req.params.libraryId);
       if (!libraryId) {
         return res.json([]);
       }
@@ -709,9 +710,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/dashboard/upcoming-renewals", requireAuth, async (req, res) => {
+  app.get("/api/dashboard/upcoming-renewals/:libraryId", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
+      const libraryId = parseInt(req.params.libraryId);
       if (!libraryId) {
         return res.json([]);
       }
@@ -722,9 +723,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/dashboard/students-with-due", requireAuth, async (req, res) => {
+  app.get("/api/dashboard/students-with-due/:libraryId", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
+      const libraryId = parseInt(req.params.libraryId);
       if (!libraryId) {
         return res.json([]);
       }
@@ -735,9 +736,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/dashboard/peak-days", requireAuth, async (req, res) => {
+  app.get("/api/dashboard/peak-days/:libraryId", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
+      const libraryId = parseInt(req.params.libraryId);
       if (!libraryId) {
         return res.json([]);
       }
@@ -759,11 +760,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/reports/data", requireAuth, async (req, res) => {
+  app.get("/api/reports/data/:libraryId/:reportKey", requireAuth, async (req, res) => {
     try {
-      const libraryId = parseInt(req.query.libraryId as string);
-      const reportKey = req.query.reportKey as string;
-      const status = req.query.status as string;
+      const libraryId = parseInt(req.params.libraryId);
+      const reportKey = req.params.reportKey;
+      const status = (req.query.status as string) || "";
       
       if (!libraryId || !reportKey) {
         return res.json([]);

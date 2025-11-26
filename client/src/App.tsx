@@ -34,10 +34,21 @@ function AppContent() {
   const [selectedLibraryId, setSelectedLibraryId] = useState<number | null>(null);
 
   useEffect(() => {
+    // For library users (non-super-admin), always use their assigned library
     if (user?.libraryId && !isSuperAdmin) {
       setSelectedLibraryId(user.libraryId);
     }
   }, [user, isSuperAdmin]);
+
+  // For library users, force their library ID and don't allow changes
+  const effectiveLibraryId = isSuperAdmin ? selectedLibraryId : user?.libraryId || null;
+  
+  // Library change handler - only super admin can change libraries
+  const handleLibraryChange = (libraryId: number) => {
+    if (isSuperAdmin) {
+      setSelectedLibraryId(libraryId);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -64,8 +75,8 @@ function AppContent() {
     <SidebarProvider style={sidebarStyle as React.CSSProperties}>
       <div className="flex min-h-screen w-full">
         <AppSidebar 
-          selectedLibraryId={selectedLibraryId} 
-          onLibraryChange={setSelectedLibraryId} 
+          selectedLibraryId={effectiveLibraryId} 
+          onLibraryChange={handleLibraryChange} 
         />
         <SidebarInset className="flex flex-col flex-1">
           <header className="flex h-14 items-center justify-between gap-4 border-b border-border bg-background px-4 sticky top-0 z-50">
@@ -82,16 +93,16 @@ function AppContent() {
           </header>
           <main className="flex-1 overflow-auto p-6 bg-background">
             <Switch>
-              <Route path="/" component={() => <Dashboard libraryId={selectedLibraryId} />} />
-              <Route path="/dashboard" component={() => <Dashboard libraryId={selectedLibraryId} />} />
-              <Route path="/reports" component={() => <Reports libraryId={selectedLibraryId} />} />
-              <Route path="/register-student" component={() => <RegisterStudent libraryId={selectedLibraryId} />} />
-              <Route path="/manage-students" component={() => <ManageStudents libraryId={selectedLibraryId} />} />
-              <Route path="/manage-subscriptions" component={() => <ManageSubscriptions libraryId={selectedLibraryId} />} />
-              <Route path="/seat-management" component={() => <SeatManagement libraryId={selectedLibraryId} />} />
-              <Route path="/expense-tracker" component={() => <ExpenseTracker libraryId={selectedLibraryId} />} />
-              <Route path="/revenue-tracker" component={() => <RevenueTracker libraryId={selectedLibraryId} />} />
-              <Route path="/user-management" component={() => <UserManagement libraryId={selectedLibraryId} />} />
+              <Route path="/" component={() => <Dashboard libraryId={effectiveLibraryId} />} />
+              <Route path="/dashboard" component={() => <Dashboard libraryId={effectiveLibraryId} />} />
+              <Route path="/reports" component={() => <Reports libraryId={effectiveLibraryId} />} />
+              <Route path="/register-student" component={() => <RegisterStudent libraryId={effectiveLibraryId} />} />
+              <Route path="/manage-students" component={() => <ManageStudents libraryId={effectiveLibraryId} />} />
+              <Route path="/manage-subscriptions" component={() => <ManageSubscriptions libraryId={effectiveLibraryId} />} />
+              <Route path="/seat-management" component={() => <SeatManagement libraryId={effectiveLibraryId} />} />
+              <Route path="/expense-tracker" component={() => <ExpenseTracker libraryId={effectiveLibraryId} />} />
+              <Route path="/revenue-tracker" component={() => <RevenueTracker libraryId={effectiveLibraryId} />} />
+              <Route path="/user-management" component={() => <UserManagement libraryId={effectiveLibraryId} />} />
               <Route path="/library-onboarding" component={LibraryOnboarding} />
               <Route component={NotFound} />
             </Switch>

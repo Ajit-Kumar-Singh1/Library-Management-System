@@ -58,7 +58,7 @@ export default function Reports({ libraryId }: LibraryContextProps) {
   });
 
   const { data: reportData, isLoading: reportLoading } = useQuery<any[]>({
-    queryKey: ["/api/reports/data", libraryId, selectedReport, filterStatus],
+    queryKey: ["/api/reports/data", libraryId, selectedReport, { status: filterStatus !== "all" ? filterStatus : undefined }],
     enabled: !!libraryId && !!selectedReport,
   });
 

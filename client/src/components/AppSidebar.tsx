@@ -96,17 +96,29 @@ export function AppSidebar({ selectedLibraryId, onLibraryChange }: AppSidebarPro
   };
 
   const filteredMenuItems = menuItems?.filter(item => {
-    if (isSuperAdmin) return item.isActive;
-    return item.isActive && canAccessMenu(item.path);
+    if (!item.isActive) return false;
+    
+    // Library Onboarding is only for super_admin (app owner)
+    if (item.path === "/library-onboarding") {
+      return isSuperAdmin;
+    }
+    
+    if (isSuperAdmin) return true;
+    return canAccessMenu(item.path);
   }) || [];
 
   const regularMenuItems = filteredMenuItems.filter(
     item => !["user-management", "library-onboarding"].includes(item.path.replace("/", ""))
   );
 
-  const adminMenuItems = filteredMenuItems.filter(
-    item => ["user-management", "library-onboarding"].includes(item.path.replace("/", ""))
-  );
+  // Admin menu items - library-onboarding only for super_admin
+  const adminMenuItems = filteredMenuItems.filter(item => {
+    const pathName = item.path.replace("/", "");
+    if (pathName === "library-onboarding") {
+      return isSuperAdmin; // Only super_admin sees library onboarding
+    }
+    return pathName === "user-management";
+  });
 
   const userInitials = user?.firstName && user?.lastName 
     ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()

@@ -92,7 +92,7 @@ export default function RegisterStudent({ libraryId }: LibraryContextProps) {
   });
 
   const { data: vacantSeats, isLoading: seatsLoading } = useQuery<VacantSeat[]>({
-    queryKey: ["/api/seats/vacant", libraryId, selectedShifts],
+    queryKey: ["/api/seats/vacant", libraryId, { shiftIds: selectedShifts }],
     enabled: !!libraryId && selectedShifts.length > 0,
   });
 
