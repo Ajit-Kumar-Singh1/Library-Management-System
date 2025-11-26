@@ -59,8 +59,17 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedSubscription, setSelectedSubscription] = useState<SubscriptionWithDetails | null>(null);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showRenewalDialog, setShowRenewalDialog] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState("cash");
+  
+  // Renewal form state
+  const [renewalStartDate, setRenewalStartDate] = useState("");
+  const [renewalEndDate, setRenewalEndDate] = useState("");
+  const [renewalCost, setRenewalCost] = useState("");
+  const [renewalPaidAmount, setRenewalPaidAmount] = useState("0");
+  const [renewalDiscount, setRenewalDiscount] = useState("0");
+  const [renewalSecurityDeposit, setRenewalSecurityDeposit] = useState("0");
 
   const { data: subscriptions, isLoading } = useQuery<SubscriptionWithDetails[]>({
     queryKey: ["/api/subscriptions", libraryId],
@@ -117,6 +126,52 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
     },
   });
 
+  const renewMutation = useMutation({
+    mutationFn: async (data: {
+      subscriptionId: number;
+      planStartDate: string;
+      planEndDate: string;
+      subscriptionCost: string;
+      paidAmount: string;
+      discount: string;
+      securityDeposit: string;
+    }) => {
+      return await apiRequest("POST", `/api/subscriptions/${data.subscriptionId}/renew`, {
+        ...data,
+        libraryId,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Subscription Renewed",
+        description: "The subscription has been renewed successfully.",
+      });
+      setShowRenewalDialog(false);
+      resetRenewalForm();
+      setSelectedSubscription(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/seats"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to Renew",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetRenewalForm = () => {
+    setRenewalStartDate("");
+    setRenewalEndDate("");
+    setRenewalCost("");
+    setRenewalPaidAmount("0");
+    setRenewalDiscount("0");
+    setRenewalSecurityDeposit("0");
+  };
+
   const filteredSubscriptions = subscriptions?.filter((sub) => {
     const matchesSearch = 
       searchQuery === "" ||
@@ -142,6 +197,38 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
         subscriptionId: selectedSubscription.id,
         amount: paymentAmount,
         paymentMode,
+      });
+    }
+  };
+
+  const handleRenewal = (subscription: SubscriptionWithDetails) => {
+    setSelectedSubscription(subscription);
+    // Set default dates - start from day after current end date
+    const currentEndDate = new Date(subscription.planEndDate);
+    const newStartDate = new Date(currentEndDate);
+    newStartDate.setDate(newStartDate.getDate() + 1);
+    const newEndDate = new Date(newStartDate);
+    newEndDate.setMonth(newEndDate.getMonth() + 1);
+    
+    setRenewalStartDate(newStartDate.toISOString().split("T")[0]);
+    setRenewalEndDate(newEndDate.toISOString().split("T")[0]);
+    setRenewalCost(subscription.subscriptionCost);
+    setRenewalPaidAmount("0");
+    setRenewalDiscount("0");
+    setRenewalSecurityDeposit(subscription.securityDeposit || "0");
+    setShowRenewalDialog(true);
+  };
+
+  const confirmRenewal = () => {
+    if (selectedSubscription && renewalStartDate && renewalEndDate && renewalCost) {
+      renewMutation.mutate({
+        subscriptionId: selectedSubscription.id,
+        planStartDate: renewalStartDate,
+        planEndDate: renewalEndDate,
+        subscriptionCost: renewalCost,
+        paidAmount: renewalPaidAmount,
+        discount: renewalDiscount,
+        securityDeposit: renewalSecurityDeposit,
       });
     }
   };
@@ -352,6 +439,17 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
                               <Plus className="w-4 h-4" />
                             </Button>
                           )}
+                          {(sub.status === "active" || sub.status === "expired") && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-primary hover:text-primary"
+                              onClick={() => handleRenewal(sub)}
+                              data-testid={`button-renew-${sub.id}`}
+                            >
+                              <RefreshCw className="w-4 h-4" />
+                            </Button>
+                          )}
                           {sub.status === "active" && (
                             <Button
                               variant="ghost"
@@ -466,6 +564,156 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               )}
               Record Payment
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showRenewalDialog} onOpenChange={(open) => {
+        setShowRenewalDialog(open);
+        if (!open) {
+          setSelectedSubscription(null);
+          resetRenewalForm();
+        }
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="w-5 h-5" />
+              Renew Subscription
+            </DialogTitle>
+            <DialogDescription>
+              Renew subscription for {selectedSubscription?.studentName} (Seat #{selectedSubscription?.seatNumber})
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-muted/50 rounded-lg p-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Current Plan</p>
+                  <p className="font-medium">{selectedSubscription?.planName}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Current End Date</p>
+                  <p className="font-medium">
+                    {selectedSubscription?.planEndDate && 
+                      new Date(selectedSubscription.planEndDate).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">New Start Date *</label>
+                <Input
+                  type="date"
+                  value={renewalStartDate}
+                  onChange={(e) => setRenewalStartDate(e.target.value)}
+                  data-testid="input-renewal-start-date"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">New End Date *</label>
+                <Input
+                  type="date"
+                  value={renewalEndDate}
+                  onChange={(e) => setRenewalEndDate(e.target.value)}
+                  data-testid="input-renewal-end-date"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Subscription Amount *</label>
+                <div className="relative">
+                  <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    value={renewalCost}
+                    onChange={(e) => setRenewalCost(e.target.value)}
+                    className="pl-9"
+                    placeholder="0"
+                    data-testid="input-renewal-cost"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Paid Amount</label>
+                <div className="relative">
+                  <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    value={renewalPaidAmount}
+                    onChange={(e) => setRenewalPaidAmount(e.target.value)}
+                    className="pl-9"
+                    placeholder="0"
+                    data-testid="input-renewal-paid"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Discount</label>
+                <div className="relative">
+                  <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    value={renewalDiscount}
+                    onChange={(e) => setRenewalDiscount(e.target.value)}
+                    className="pl-9"
+                    placeholder="0"
+                    data-testid="input-renewal-discount"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Security Money (Locker)</label>
+                <div className="relative">
+                  <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    value={renewalSecurityDeposit}
+                    onChange={(e) => setRenewalSecurityDeposit(e.target.value)}
+                    className="pl-9"
+                    placeholder="0"
+                    data-testid="input-renewal-security"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {renewalCost && (
+              <div className="bg-primary/10 rounded-lg p-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Pending Amount:</span>
+                  <span className="font-medium flex items-center gap-1">
+                    <IndianRupee className="w-3 h-3" />
+                    {Math.max(0, parseFloat(renewalCost || "0") - parseFloat(renewalPaidAmount || "0") - parseFloat(renewalDiscount || "0")).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => {
+              setShowRenewalDialog(false);
+              resetRenewalForm();
+            }}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmRenewal}
+              disabled={!renewalStartDate || !renewalEndDate || !renewalCost || renewMutation.isPending}
+              data-testid="button-confirm-renewal"
+            >
+              {renewMutation.isPending && (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              )}
+              Renew Subscription
             </Button>
           </div>
         </DialogContent>

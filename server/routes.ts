@@ -309,14 +309,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const library = await storage.getLibrary(libraryId);
       const shifts = await storage.getShiftsByLibrary(libraryId);
       const { seats, allocations } = await storage.getSeatGrid(libraryId);
+      const students = await storage.getStudentsByLibrary(libraryId);
       
       const allocationsWithDetails = allocations.map(a => {
         const seat = seats.find(s => s.id === a.seatId);
+        const student = a.studentId ? students.find(s => s.id === a.studentId) : null;
         return {
           seatId: a.seatId,
           seatNumber: seat?.seatNumber || 0,
           status: a.status,
           gender: a.gender,
+          studentName: student?.studentName || undefined,
+          studentId: student?.studentId || undefined,
           shiftId: a.shiftId,
         };
       });
@@ -436,6 +440,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: req.session.userId,
       });
 
+      // Create seat allocations for each selected shift
+      for (const shiftId of shiftIds) {
+        await storage.createSeatAllocation({
+          seatId,
+          shiftId,
+          studentId: student.id,
+          status: "occupied",
+          gender: studentData.gender,
+          createdBy: req.session.userId,
+        });
+      }
+
       // Create payment record if paid amount > 0
       if (paid > 0) {
         await storage.createPayment({
@@ -500,44 +516,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/subscriptions/renew/:studentId", requireAuth, async (req, res) => {
+  app.post("/api/subscriptions/:subscriptionId/renew", requireAuth, async (req, res) => {
     try {
-      const studentId = parseInt(req.params.studentId);
-      const { libraryId, planStartDate, planEndDate, subscriptionCost, paidAmount, discount } = req.body;
+      const subscriptionId = parseInt(req.params.subscriptionId);
+      const { libraryId, planStartDate, planEndDate, subscriptionCost, paidAmount, discount, securityDeposit } = req.body;
       
-      const activeSub = await storage.getActiveSubscriptionByStudent(studentId);
-      if (!activeSub) {
-        return res.status(404).json({ message: "No active subscription found" });
+      // Get the existing subscription
+      const existingSub = await storage.getSubscription(subscriptionId);
+      if (!existingSub) {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+
+      // Get student info for gender
+      const student = await storage.getStudentById(existingSub.studentId);
+      if (!student) {
+        return res.status(404).json({ message: "Student not found" });
       }
 
       const cost = parseFloat(subscriptionCost || "0");
       const paid = parseFloat(paidAmount || "0");
       const disc = parseFloat(discount || "0");
+      const security = parseFloat(securityDeposit || "0");
       const pending = Math.max(0, cost - paid - disc);
 
-      const subscription = await storage.renewSubscription(studentId, {
-        libraryId,
-        studentId,
-        seatId: activeSub.seatId,
-        planName: activeSub.planName,
-        shiftIds: activeSub.shiftIds,
-        totalHours: activeSub.totalHours,
-        shiftStart: activeSub.shiftStart,
-        shiftEnd: activeSub.shiftEnd,
+      // Delete existing seat allocations for this student
+      await storage.deleteSeatAllocationsForStudent(existingSub.studentId);
+
+      // Create new subscription (keeping same seat, shifts, etc.)
+      const subscription = await storage.renewSubscription(existingSub.studentId, {
+        libraryId: existingSub.libraryId,
+        studentId: existingSub.studentId,
+        seatId: existingSub.seatId,
+        planName: existingSub.planName,
+        shiftIds: existingSub.shiftIds,
+        totalHours: existingSub.totalHours,
+        shiftStart: existingSub.shiftStart,
+        shiftEnd: existingSub.shiftEnd,
         planStartDate,
         planEndDate,
         subscriptionCost: String(cost),
         paidAmount: String(paid),
         discount: String(disc),
         pendingAmount: String(pending),
+        securityDeposit: String(security),
         status: "active",
         createdBy: req.session.userId,
       });
 
+      // Mark old subscription as renewed/expired
+      await storage.updateSubscription(subscriptionId, {
+        status: "renewed",
+        modifiedBy: req.session.userId,
+      });
+
+      // Recreate seat allocations for renewed subscription
+      const shiftIds = JSON.parse(existingSub.shiftIds || "[]");
+      for (const shiftId of shiftIds) {
+        await storage.createSeatAllocation({
+          seatId: existingSub.seatId,
+          shiftId,
+          studentId: existingSub.studentId,
+          status: "occupied",
+          gender: student.gender,
+          createdBy: req.session.userId,
+        });
+      }
+
       if (paid > 0) {
         await storage.createPayment({
-          libraryId,
-          studentId,
+          libraryId: existingSub.libraryId,
+          studentId: existingSub.studentId,
           subscriptionId: subscription.id,
           amount: String(paid),
           paymentDate: planStartDate,

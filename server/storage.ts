@@ -53,6 +53,8 @@ export interface IStorage {
   createSeat(seat: InsertSeat): Promise<Seat>;
   getVacantSeatsForShifts(libraryId: number, shiftIds: number[]): Promise<Seat[]>;
   getSeatGrid(libraryId: number): Promise<{ seats: Seat[]; allocations: SeatAllocation[] }>;
+  createSeatAllocation(data: InsertSeatAllocation): Promise<SeatAllocation>;
+  deleteSeatAllocationsForStudent(studentId: number): Promise<void>;
 
   // Student operations
   getStudentsByLibrary(libraryId: number): Promise<Student[]>;
@@ -65,6 +67,7 @@ export interface IStorage {
 
   // Subscription operations
   getSubscriptionsByLibrary(libraryId: number): Promise<Subscription[]>;
+  getSubscription(id: number): Promise<Subscription | undefined>;
   getActiveSubscriptionByStudent(studentId: number): Promise<Subscription | undefined>;
   createSubscription(sub: InsertSubscription): Promise<Subscription>;
   updateSubscription(id: number, data: Partial<InsertSubscription>): Promise<Subscription | undefined>;
@@ -239,10 +242,30 @@ export class DatabaseStorage implements IStorage {
 
   async getSeatGrid(libraryId: number): Promise<{ seats: Seat[]; allocations: SeatAllocation[] }> {
     const librarySeats = await this.getSeatsByLibrary(libraryId);
+    const seatIds = librarySeats.map(s => s.id);
+    
+    if (seatIds.length === 0) {
+      return { seats: librarySeats, allocations: [] };
+    }
+    
     const allocations = await db.select()
       .from(seatAllocations)
-      .where(eq(seatAllocations.isActive, true));
+      .where(and(
+        inArray(seatAllocations.seatId, seatIds),
+        eq(seatAllocations.isActive, true)
+      ));
     return { seats: librarySeats, allocations };
+  }
+
+  async createSeatAllocation(data: InsertSeatAllocation): Promise<SeatAllocation> {
+    const [created] = await db.insert(seatAllocations).values(data).returning();
+    return created;
+  }
+
+  async deleteSeatAllocationsForStudent(studentId: number): Promise<void> {
+    await db.update(seatAllocations)
+      .set({ isActive: false })
+      .where(eq(seatAllocations.studentId, studentId));
   }
 
   // Student operations
@@ -297,6 +320,11 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(subscriptions)
       .where(and(eq(subscriptions.libraryId, libraryId), eq(subscriptions.isActive, true)))
       .orderBy(desc(subscriptions.createdOn));
+  }
+
+  async getSubscription(id: number): Promise<Subscription | undefined> {
+    const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.id, id));
+    return sub;
   }
 
   async getActiveSubscriptionByStudent(studentId: number): Promise<Subscription | undefined> {
