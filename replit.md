@@ -102,6 +102,18 @@ Preferred communication style: Simple, everyday language.
 - Audit fields (`createdBy`, `modifiedBy`, timestamps) on all tables
 - JSON fields for flexible configuration (reportsConfig columns)
 
+**Student ID Format:**
+- Per-library sequential IDs with library prefix: `LIB{libraryId}-STD{serial}`
+- Example: `LIB001-STD000001` for first student in library 1
+- Uses MAX(id) per library for unique serials even after deletions
+- Format ensures unique IDs across the multi-tenant system
+
+**Subscription Lifecycle:**
+- Active subscriptions have `status: "active"` and `isActive: true`
+- When renewed, old subscription gets `status: "renewed"` and `isActive: false`
+- New subscription is created with fresh dates and `isActive: true`
+- Seat allocations are deleted and recreated for renewed subscriptions
+
 ### Authentication and Authorization
 
 **Authentication:**
