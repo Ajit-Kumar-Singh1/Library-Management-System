@@ -192,6 +192,8 @@ export const payments = pgTable("payments", {
   studentId: integer("student_id").references(() => students.id).notNull(),
   subscriptionId: integer("subscription_id").references(() => subscriptions.id).notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  cashAmount: decimal("cash_amount", { precision: 10, scale: 2 }).default("0"),
+  onlineAmount: decimal("online_amount", { precision: 10, scale: 2 }).default("0"),
   paymentDate: date("payment_date").notNull(),
   paymentMode: varchar("payment_mode", { length: 50 }).notNull().default("cash"),
   transactionId: varchar("transaction_id", { length: 100 }),

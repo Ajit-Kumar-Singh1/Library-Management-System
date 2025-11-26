@@ -459,9 +459,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         planStartDate,
         planEndDate,
         subscriptionCost: String(cost),
-        paidAmount: String(paid),
+        paidAmount: "0",
         discount: String(disc),
-        pendingAmount: String(pending),
+        pendingAmount: String(cost - disc),
         securityDeposit: String(security),
         status: "active",
         createdBy: req.session.userId,
@@ -479,44 +479,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create payment records based on payment mode
-      if (paymentMode === "both") {
-        // Create separate payment records for cash and online
-        if (cash > 0) {
-          await storage.createPayment({
-            libraryId,
-            studentId: student.id,
-            subscriptionId: subscription.id,
-            amount: String(cash),
-            paymentDate: planStartDate,
-            paymentMode: "cash",
-            status: "completed",
-            createdBy: req.session.userId,
-          });
-        }
-        if (online > 0) {
-          await storage.createPayment({
-            libraryId,
-            studentId: student.id,
-            subscriptionId: subscription.id,
-            amount: String(online),
-            paymentDate: planStartDate,
-            paymentMode: "online",
-            transactionId: transactionId || undefined,
-            status: "completed",
-            createdBy: req.session.userId,
-          });
-        }
-      } else if (paid > 0) {
-        // Single payment record for cash or online only
+      // Create single payment record with breakdown for all payment modes
+      if (paid > 0) {
         await storage.createPayment({
           libraryId,
           studentId: student.id,
           subscriptionId: subscription.id,
           amount: String(paid),
+          cashAmount: String(cash),
+          onlineAmount: String(online),
           paymentDate: planStartDate,
           paymentMode: paymentMode || "cash",
-          transactionId: paymentMode === "online" ? (transactionId || undefined) : undefined,
+          transactionId: (paymentMode === "online" || paymentMode === "both") ? (transactionId || undefined) : undefined,
           status: "completed",
           createdBy: req.session.userId,
         });
@@ -599,6 +573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteSeatAllocationsForStudent(existingSub.studentId);
 
       // Create new subscription (keeping same seat, shifts, etc.)
+      // paidAmount starts at 0 and will be updated by payment creation
       const subscription = await storage.renewSubscription(existingSub.studentId, {
         libraryId: existingSub.libraryId,
         studentId: existingSub.studentId,
@@ -611,9 +586,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         planStartDate,
         planEndDate,
         subscriptionCost: String(cost),
-        paidAmount: String(paid),
+        paidAmount: "0",
         discount: String(disc),
-        pendingAmount: String(pending),
+        pendingAmount: String(cost - disc),
         securityDeposit: String(security),
         status: "active",
         createdBy: req.session.userId,
