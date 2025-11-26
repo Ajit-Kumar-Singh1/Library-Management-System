@@ -310,9 +310,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async generateStudentId(libraryId: number): Promise<string> {
-    const result = await db.select({ maxId: sql<number>`COALESCE(MAX(id), 0)` }).from(students);
-    const nextId = Number(result[0]?.maxId || 0) + 1;
-    return `STD${String(nextId).padStart(6, "0")}`;
+    // Use MAX(id) for students in this library to ensure unique serial even after deletions
+    const result = await db.select({ maxId: sql<number>`COALESCE(MAX(id), 0)` })
+      .from(students)
+      .where(eq(students.libraryId, libraryId));
+    const nextSerial = Number(result[0]?.maxId || 0) + 1;
+    // Format: LIB{libraryId}-STD{serial} e.g., LIB001-STD000001
+    return `LIB${String(libraryId).padStart(3, "0")}-STD${String(nextSerial).padStart(6, "0")}`;
   }
 
   // Subscription operations
@@ -348,8 +352,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async renewSubscription(studentId: number, data: InsertSubscription): Promise<Subscription> {
+    // Mark old subscription as expired AND inactive
     await db.update(subscriptions)
-      .set({ status: "expired", modifiedOn: new Date() })
+      .set({ status: "expired", isActive: false, modifiedOn: new Date() })
       .where(and(eq(subscriptions.studentId, studentId), eq(subscriptions.status, "active")));
     return this.createSubscription(data);
   }

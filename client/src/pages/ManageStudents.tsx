@@ -101,7 +101,7 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
   const searchMutation = useMutation({
     mutationFn: async (query: string) => {
       const response = await apiRequest("GET", `/api/students/search/${libraryId}/${encodeURIComponent(query)}`);
-      return response;
+      return response.json() as Promise<StudentWithSubscription[]>;
     },
     onSuccess: (data: StudentWithSubscription[]) => {
       if (data.length > 0) {

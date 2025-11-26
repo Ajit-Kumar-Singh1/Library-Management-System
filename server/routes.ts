@@ -563,9 +563,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: req.session.userId,
       });
 
-      // Mark old subscription as renewed/expired
+      // Mark old subscription as renewed AND inactive
       await storage.updateSubscription(subscriptionId, {
         status: "renewed",
+        isActive: false,
         modifiedBy: req.session.userId,
       });
 
