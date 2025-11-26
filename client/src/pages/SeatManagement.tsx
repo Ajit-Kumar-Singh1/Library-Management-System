@@ -147,6 +147,7 @@ export default function SeatManagement({ libraryId }: LibraryContextProps) {
   const getFilteredSeats = () => {
     if (!seatData) return [];
     if (selectedShift === "all") {
+      // For grid display, deduplicate by seat number (prefer occupied for display)
       const seatMap = new Map<number, SeatAllocationData>();
       seatData.allocations.forEach(seat => {
         const existing = seatMap.get(seat.seatNumber);
@@ -162,14 +163,40 @@ export default function SeatManagement({ libraryId }: LibraryContextProps) {
   };
 
   const calculateStats = () => {
-    const seats = getFilteredSeats();
-    const vacant = seats.filter(s => s.status === "vacant").length;
-    const occupied = seats.filter(s => s.status === "occupied").length;
-    const blocked = seats.filter(s => s.status === "blocked").length;
-    const male = seats.filter(s => s.gender === "male").length;
-    const female = seats.filter(s => s.gender === "female").length;
+    if (!seatData) return { vacant: 0, occupied: 0, blocked: 0, male: 0, female: 0, total: 0 };
     
-    return { vacant, occupied, blocked, male, female, total: seatData?.totalSeats || 0 };
+    const totalSeats = seatData.totalSeats || 0;
+    const shiftsCount = seatData.shifts?.length || 1;
+    
+    if (selectedShift === "all") {
+      // For "All Shifts" view: Count across ALL shifts
+      // A seat vacant in shift A and occupied in shift B counts as 1 vacant + 1 occupied
+      // Same seat occupied by male in shift 1 and female in shift 2 = 1 male + 1 female
+      const allAllocations = seatData.allocations;
+      const occupied = allAllocations.filter(s => s.status === "occupied").length;
+      const blocked = allAllocations.filter(s => s.status === "blocked").length;
+      const male = allAllocations.filter(s => s.status === "occupied" && s.gender === "male").length;
+      const female = allAllocations.filter(s => s.status === "occupied" && s.gender === "female").length;
+      
+      // Vacant = (total seats * number of shifts) - occupied - blocked allocations in the data
+      // Since allocations only exist for occupied/blocked, vacant is computed from what's not allocated
+      const totalSlots = totalSeats * shiftsCount;
+      const vacant = totalSlots - occupied - blocked;
+      
+      return { vacant, occupied, blocked, male, female, total: totalSlots };
+    } else {
+      // For specific shift: count only that shift's allocations
+      const shiftAllocations = seatData.allocations.filter(
+        s => s.shiftId === parseInt(selectedShift)
+      );
+      const occupied = shiftAllocations.filter(s => s.status === "occupied").length;
+      const blocked = shiftAllocations.filter(s => s.status === "blocked").length;
+      const male = shiftAllocations.filter(s => s.status === "occupied" && s.gender === "male").length;
+      const female = shiftAllocations.filter(s => s.status === "occupied" && s.gender === "female").length;
+      const vacant = totalSeats - occupied - blocked;
+      
+      return { vacant, occupied, blocked, male, female, total: totalSeats };
+    }
   };
 
   const stats = calculateStats();
