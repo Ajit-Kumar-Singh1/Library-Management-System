@@ -1,0 +1,108 @@
+================================================================================
+       LIBRARY MANAGEMENT SYSTEM - LOCAL SETUP GUIDE (Windows)
+================================================================================
+
+STEP 1: INSTALL PREREQUISITES
+------------------------------
+1. Download and install Node.js (v18 or higher):
+   https://nodejs.org/en/download/
+
+2. Download and install PostgreSQL:
+   https://www.postgresql.org/download/windows/
+   
+   During PostgreSQL installation:
+   - Set a password for 'postgres' user (REMEMBER THIS PASSWORD!)
+   - Keep default port: 5432
+   - Complete the installation
+
+
+STEP 2: CREATE DATABASE
+-----------------------
+Option A - Using pgAdmin (GUI):
+   1. Open pgAdmin (installed with PostgreSQL)
+   2. Connect to your local server (password is what you set during install)
+   3. Right-click "Databases" -> "Create" -> "Database"
+   4. Enter name: library_db
+   5. Click "Save"
+
+Option B - Using Command Prompt:
+   1. Open Command Prompt as Administrator
+   2. Run: psql -U postgres
+   3. Enter your password when prompted
+   4. Run: CREATE DATABASE library_db;
+   5. Run: \q
+
+
+STEP 3: CONFIGURE ENVIRONMENT
+-----------------------------
+1. In the project folder, find the file: .env.example
+2. RENAME it to: .env
+3. Open .env in Notepad and replace YOUR_PASSWORD with your PostgreSQL password
+
+   Example: If your PostgreSQL password is "mypass123", change:
+   DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/library_db
+   TO:
+   DATABASE_URL=postgresql://postgres:mypass123@localhost:5432/library_db
+
+
+STEP 4: INSTALL DEPENDENCIES
+----------------------------
+1. Open PowerShell in the project folder
+2. Run: npm install
+
+
+STEP 5: CREATE DATABASE TABLES
+------------------------------
+Run: npx drizzle-kit push
+
+You should see: "[✓] Changes applied"
+
+
+STEP 6: START THE APPLICATION
+-----------------------------
+Run: npm run dev
+
+You should see: "serving on port 5000"
+
+
+STEP 7: OPEN IN BROWSER
+-----------------------
+Open your browser and go to: http://localhost:5000
+
+
+LOGIN CREDENTIALS
+-----------------
+Super Admin (full access):
+   Username: superadmin
+   Password: admin123
+
+Library Admin (library-specific access):
+   Username: aradhyaadmin
+   Password: admin123
+
+
+TROUBLESHOOTING
+---------------
+Error: "NODE_ENV is not recognized"
+   -> Make sure you have cross-env installed: npm install cross-env
+
+Error: "DATABASE_URL must be set"
+   -> Make sure you renamed .env.example to .env
+   -> Make sure the password in .env is correct
+
+Error: "Connection refused"
+   -> Make sure PostgreSQL is running
+   -> Check if the password is correct
+   -> Check if database "library_db" exists
+
+Error: "drizzle-kit push unknown command"
+   -> Run: npm install drizzle-kit@0.31.4
+   -> Then run: npx drizzle-kit push
+
+
+STOPPING THE APPLICATION
+------------------------
+Press Ctrl+C in the PowerShell window
+
+
+================================================================================
