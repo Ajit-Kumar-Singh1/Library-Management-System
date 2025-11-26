@@ -453,6 +453,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...studentData 
       } = req.body;
       
+      // Validate seat is still vacant for all selected shifts
+      const vacantSeats = await storage.getVacantSeatsForShifts(libraryId, shiftIds);
+      const isVacant = vacantSeats.some(s => s.id === seatId);
+      if (!isVacant) {
+        return res.status(400).json({ 
+          message: "Selected seat is no longer available for the chosen shifts. Please select another seat." 
+        });
+      }
+      
       // Generate student ID
       const studentId = await storage.generateStudentId(libraryId);
       

@@ -132,11 +132,13 @@ export default function RegisterStudent({ libraryId }: LibraryContextProps) {
       setSelectedShifts([]);
       // Invalidate all relevant queries so data loads correctly on navigation
       queryClient.invalidateQueries({ queryKey: ["/api/students"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/students/recent", libraryId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/students/recent"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/seats/grid", libraryId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/seats/grid"] });
       queryClient.invalidateQueries({ queryKey: ["/api/seats/vacant"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions", libraryId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/payments"] });
     },
     onError: (error: Error) => {
       toast({

@@ -127,6 +127,8 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
       });
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/seats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/students"] });
     },
     onError: (error: Error) => {
       toast({
@@ -148,6 +150,8 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
       });
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/seats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/students"] });
     },
     onError: (error: Error) => {
       toast({

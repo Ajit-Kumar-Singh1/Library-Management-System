@@ -21,6 +21,7 @@ import RegisterStudent from "@/pages/RegisterStudent";
 import ManageStudents from "@/pages/ManageStudents";
 import ManageSubscriptions from "@/pages/ManageSubscriptions";
 import SeatManagement from "@/pages/SeatManagement";
+import ActiveShifts from "@/pages/ActiveShifts";
 import ExpenseTracker from "@/pages/ExpenseTracker";
 import RevenueTracker from "@/pages/RevenueTracker";
 import Reports from "@/pages/Reports";
@@ -101,6 +102,7 @@ function AppContent() {
               <Route path="/manage-students" component={() => <ManageStudents libraryId={effectiveLibraryId} />} />
               <Route path="/manage-subscriptions" component={() => <ManageSubscriptions libraryId={effectiveLibraryId} />} />
               <Route path="/seat-management" component={() => <SeatManagement libraryId={effectiveLibraryId} />} />
+              <Route path="/active-shifts" component={() => <ActiveShifts libraryId={effectiveLibraryId} />} />
               <Route path="/expense-tracker" component={() => <ExpenseTracker libraryId={effectiveLibraryId} />} />
               <Route path="/revenue-tracker" component={() => <RevenueTracker libraryId={effectiveLibraryId} />} />
               <Route path="/user-management" component={() => <UserManagement libraryId={effectiveLibraryId} />} />

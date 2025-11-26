@@ -29,6 +29,7 @@ import {
   LogOut,
   ChevronDown,
   Library,
+  Clock,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,8 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   "manage-students": Users,
   "manage-subscriptions": CreditCard,
   "seat-management": Grid3X3,
+  "active-shifts": Clock,
+  clock: Clock,
   "expense-tracker": Receipt,
   "revenue-tracker": DollarSign,
   "user-management": UserCog,
