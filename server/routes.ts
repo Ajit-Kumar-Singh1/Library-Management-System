@@ -525,18 +525,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const subscriptions = await storage.getSubscriptionsByLibrary(libraryId);
       
-      // Enrich with student and seat info
+      // Enrich with student, seat and payment info
       const students = await storage.getStudentsByLibrary(libraryId);
       const seats = await storage.getSeatsByLibrary(libraryId);
+      const payments = await storage.getPaymentsByLibrary(libraryId);
       
       const enriched = subscriptions.map(sub => {
         const student = students.find(s => s.id === sub.studentId);
         const seat = seats.find(s => s.id === sub.seatId);
+        // Get the first payment for this subscription to determine initial payment mode
+        const subPayments = payments.filter(p => p.subscriptionId === sub.id).sort(
+          (a, b) => new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime()
+        );
+        const firstPayment = subPayments[0];
         return {
           ...sub,
           studentName: student?.studentName || "",
           studentIdCode: student?.studentId || "",
           seatNumber: seat?.seatNumber || 0,
+          paymentMode: firstPayment?.paymentMode || null,
+          cashAmount: firstPayment?.cashAmount || "0",
+          onlineAmount: firstPayment?.onlineAmount || "0",
         };
       });
       

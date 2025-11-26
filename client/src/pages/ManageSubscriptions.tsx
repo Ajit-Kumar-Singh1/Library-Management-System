@@ -47,6 +47,9 @@ interface SubscriptionWithDetails extends Subscription {
   studentName: string;
   studentIdCode: string;
   seatNumber: number;
+  paymentMode?: string | null;
+  cashAmount?: string;
+  onlineAmount?: string;
 }
 
 interface LibraryContextProps {
@@ -395,6 +398,7 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
                     <TableHead>Duration</TableHead>
                     <TableHead className="text-right">Cost</TableHead>
                     <TableHead className="text-right">Paid</TableHead>
+                    <TableHead className="text-center">Mode</TableHead>
                     <TableHead className="text-right">Pending</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -441,6 +445,15 @@ export default function ManageSubscriptions({ libraryId }: LibraryContextProps) 
                           <IndianRupee className="w-3 h-3" />
                           {parseFloat(sub.paidAmount).toLocaleString()}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {sub.paymentMode ? (
+                          <Badge variant="outline" className="text-xs capitalize">
+                            {sub.paymentMode === "both" ? "Cash + Online" : sub.paymentMode}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">-</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <span className={`flex items-center justify-end gap-1 font-medium ${
