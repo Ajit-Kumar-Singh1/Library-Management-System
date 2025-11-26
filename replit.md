@@ -114,6 +114,17 @@ Preferred communication style: Simple, everyday language.
 - New subscription is created with fresh dates and `isActive: true`
 - Seat allocations are deleted and recreated for renewed subscriptions
 
+**Seat Allocation Rules:**
+- Same seat can be allocated to different students in different shifts
+- Server validates seat availability before registration to prevent race conditions
+- Seat availability is checked per shift, not globally
+
+**Active Shifts Page:**
+- Shows seat allocation matrix with seats as rows and shifts as columns
+- Displays shift statistics cards (Vacant/Occupied/Blocked counts per shift)
+- Status badges indicate Vacant (green) or Occupied (student name in tooltip)
+- Located at `/active-shifts` path with clock icon in sidebar
+
 ### Authentication and Authorization
 
 **Authentication:**
