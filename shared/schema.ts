@@ -174,6 +174,7 @@ export const subscriptions = pgTable("subscriptions", {
   paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }).notNull().default("0"),
   discount: decimal("discount", { precision: 10, scale: 2 }).notNull().default("0"),
   pendingAmount: decimal("pending_amount", { precision: 10, scale: 2 }).notNull().default("0"),
+  securityDeposit: decimal("security_deposit", { precision: 10, scale: 2 }).notNull().default("0"),
   status: varchar("status", { length: 50 }).notNull().default("active"),
   isActive: boolean("is_active").notNull().default(true),
   createdOn: timestamp("created_on").defaultNow(),

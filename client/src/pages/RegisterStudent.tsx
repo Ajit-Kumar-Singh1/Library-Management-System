@@ -46,6 +46,7 @@ const registerStudentSchema = z.object({
   subscriptionCost: z.string().min(1, "Subscription cost is required"),
   paidAmount: z.string().default("0"),
   discount: z.string().default("0"),
+  securityDeposit: z.string().default("0"),
   description: z.string().optional(),
 });
 
@@ -82,6 +83,7 @@ export default function RegisterStudent({ libraryId }: LibraryContextProps) {
       subscriptionCost: "",
       paidAmount: "0",
       discount: "0",
+      securityDeposit: "0",
       description: "",
     },
   });
@@ -478,13 +480,13 @@ export default function RegisterStudent({ libraryId }: LibraryContextProps) {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <FormField
                     control={form.control}
                     name="subscriptionCost"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Subscription Cost *</FormLabel>
+                        <FormLabel>Subscription Amount *</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -540,6 +542,29 @@ export default function RegisterStudent({ libraryId }: LibraryContextProps) {
                               className="pl-9"
                               {...field} 
                               data-testid="input-discount"
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="securityDeposit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Security Money (Locker)</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input 
+                              type="number" 
+                              placeholder="0" 
+                              className="pl-9"
+                              {...field} 
+                              data-testid="input-security-deposit"
                             />
                           </div>
                         </FormControl>

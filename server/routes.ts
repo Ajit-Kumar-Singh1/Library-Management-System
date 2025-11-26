@@ -388,7 +388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/students", requireAuth, async (req, res) => {
     try {
-      const { libraryId, shiftIds, seatId, planStartDate, planEndDate, subscriptionCost, paidAmount, discount, ...studentData } = req.body;
+      const { libraryId, shiftIds, seatId, planStartDate, planEndDate, subscriptionCost, paidAmount, discount, securityDeposit, ...studentData } = req.body;
       
       // Generate student ID
       const studentId = await storage.generateStudentId(libraryId);
@@ -413,6 +413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cost = parseFloat(subscriptionCost || "0");
       const paid = parseFloat(paidAmount || "0");
       const disc = parseFloat(discount || "0");
+      const security = parseFloat(securityDeposit || "0");
       const pending = Math.max(0, cost - paid - disc);
 
       const subscription = await storage.createSubscription({
@@ -430,6 +431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paidAmount: String(paid),
         discount: String(disc),
         pendingAmount: String(pending),
+        securityDeposit: String(security),
         status: "active",
         createdBy: req.session.userId,
       });
