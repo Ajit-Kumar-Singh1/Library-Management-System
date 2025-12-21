@@ -54,7 +54,30 @@ const StatusLegend = () => (
   </div>
 );
 
-function SeatCell({ seat }: { seat: SeatAllocationData }) {
+// Colors for shift pills in tooltip
+const SHIFT_PILL_COLORS = [
+  "bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-200",
+  "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-200",
+  "bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-200",
+  "bg-violet-100 text-violet-700 dark:bg-violet-900/60 dark:text-violet-200",
+];
+
+type TooltipStudent = {
+  studentName: string;
+  studentId?: string;
+  shiftName?: string;
+  shiftId?: number;
+  startTime?: string;
+  endTime?: string;
+};
+
+function SeatCell({
+  seat,
+  tooltipStudents,
+}: {
+  seat: SeatAllocationData;
+  tooltipStudents?: TooltipStudent[];
+}) {
   const getStatusClasses = () => {
     if (seat.status === "blocked") {
       return "bg-destructive/20 border-destructive/40 cursor-not-allowed";
@@ -91,6 +114,51 @@ function SeatCell({ seat }: { seat: SeatAllocationData }) {
     </div>
   );
 
+  // Multi-student tooltip (All Shifts)
+  if (tooltipStudents && tooltipStudents.length > 0) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent>
+          <div className="text-sm space-y-2">
+            {tooltipStudents.map((s, idx) => {
+              const colorClass =
+                SHIFT_PILL_COLORS[
+                  (s.shiftId ?? idx) % SHIFT_PILL_COLORS.length
+                ];
+
+              const hasTime = s.startTime && s.endTime;
+
+              return (
+                <div key={idx} className="space-y-0.5">
+                  {s.shiftName && (
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${colorClass}`}
+                    >
+                      {s.shiftName}
+                      {hasTime && (
+                        <span className="ml-1 opacity-80">
+                          {s.startTime}–{s.endTime}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                  <p className="font-medium leading-tight">{s.studentName}</p>
+                  {s.studentId && (
+                    <p className="text-xs text-muted-foreground leading-tight">
+                      {s.studentId}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  // Old single-student tooltip behavior (for specific shift view)
   if (seat.status === "occupied" && seat.studentName) {
     return (
       <Tooltip>
@@ -108,30 +176,68 @@ function SeatCell({ seat }: { seat: SeatAllocationData }) {
   return content;
 }
 
-function SeatGrid({ seats, totalSeats }: { seats: SeatAllocationData[]; totalSeats: number }) {
+function SeatGrid({
+  seats,
+  totalSeats,
+  tooltipMap,
+  selectedShift,
+  shifts,
+}: {
+  seats: SeatAllocationData[];
+  totalSeats: number;
+  tooltipMap?: Map<number, TooltipStudent[]>;
+  selectedShift: string;
+  shifts?: Shift[];
+}) {
   const columns = totalSeats <= 50 ? 10 : totalSeats <= 100 ? 10 : 15;
-  
+
   const allSeats = Array.from({ length: totalSeats }, (_, i) => {
     const seatNumber = i + 1;
-    const existingSeat = seats.find(s => s.seatNumber === seatNumber);
-    return existingSeat || {
-      seatId: 0,
-      seatNumber,
-      status: "vacant" as const,
-      shiftId: 0,
-    };
+    const existingSeat = seats.find((s) => s.seatNumber === seatNumber);
+    return (
+      existingSeat || {
+        seatId: 0,
+        seatNumber,
+        status: "vacant" as const,
+        shiftId: 0,
+      }
+    );
   });
 
   return (
-    <div 
+    <div
       className="grid gap-2"
-      style={{ 
+      style={{
         gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
       }}
     >
-      {allSeats.map((seat) => (
-        <SeatCell key={seat.seatNumber} seat={seat} />
-      ))}
+      {allSeats.map((seat) => {
+        let tooltipStudents: TooltipStudent[] | undefined;
+
+        if (selectedShift === "all") {
+          tooltipStudents = tooltipMap?.get(seat.seatNumber);
+        } else if (seat.status === "occupied" && seat.studentName) {
+          const shift = shifts?.find((s) => s.id === seat.shiftId);
+          tooltipStudents = [
+            {
+              studentName: seat.studentName,
+              studentId: seat.studentId,
+              shiftName: shift?.name,
+              shiftId: shift?.id,
+              startTime: shift?.startTime,
+              endTime: shift?.endTime,
+            },
+          ];
+        }
+
+        return (
+          <SeatCell
+            key={seat.seatNumber}
+            seat={seat}
+            tooltipStudents={tooltipStudents}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -143,6 +249,34 @@ export default function SeatManagement({ libraryId }: LibraryContextProps) {
     queryKey: ["/api/seats/grid", libraryId],
     enabled: !!libraryId,
   });
+
+  // Build tooltip map: seatNumber -> all students (with shift info) for that seat across shifts
+  const buildTooltipMapForAllShifts = () => {
+    if (!seatData)
+      return new Map<number, TooltipStudent[]>();
+
+    const map = new Map<number, TooltipStudent[]>();
+
+    seatData.allocations.forEach((a) => {
+      if (a.status === "occupied" && a.studentName) {
+        const shift = seatData.shifts.find((s) => s.id === a.shiftId);
+        const arr = map.get(a.seatNumber) ?? [];
+
+        arr.push({
+          studentName: a.studentName,
+          studentId: a.studentId,
+          shiftName: shift?.name,
+          shiftId: shift?.id,
+          startTime: shift?.startTime,
+          endTime: shift?.endTime,
+        });
+
+        map.set(a.seatNumber, arr);
+      }
+    });
+
+    return map;
+  };
 
   const getFilteredSeats = () => {
     if (!seatData) return [];
@@ -162,6 +296,9 @@ export default function SeatManagement({ libraryId }: LibraryContextProps) {
     );
   };
 
+  const filteredSeats = getFilteredSeats();
+  const tooltipMap = selectedShift === "all" ? buildTooltipMapForAllShifts() : undefined;
+
   const calculateStats = () => {
     if (!seatData) return { vacant: 0, occupied: 0, blocked: 0, male: 0, female: 0, total: 0 };
     
@@ -169,23 +306,18 @@ export default function SeatManagement({ libraryId }: LibraryContextProps) {
     const shiftsCount = seatData.shifts?.length || 1;
     
     if (selectedShift === "all") {
-      // For "All Shifts" view: Count across ALL shifts
-      // A seat vacant in shift A and occupied in shift B counts as 1 vacant + 1 occupied
-      // Same seat occupied by male in shift 1 and female in shift 2 = 1 male + 1 female
+      // For "All Shifts" view: count across all shifts
       const allAllocations = seatData.allocations;
       const occupied = allAllocations.filter(s => s.status === "occupied").length;
       const blocked = allAllocations.filter(s => s.status === "blocked").length;
       const male = allAllocations.filter(s => s.status === "occupied" && s.gender === "male").length;
       const female = allAllocations.filter(s => s.status === "occupied" && s.gender === "female").length;
       
-      // Vacant = (total seats * number of shifts) - occupied - blocked allocations in the data
-      // Since allocations only exist for occupied/blocked, vacant is computed from what's not allocated
       const totalSlots = totalSeats * shiftsCount;
       const vacant = totalSlots - occupied - blocked;
       
       return { vacant, occupied, blocked, male, female, total: totalSlots };
     } else {
-      // For specific shift: count only that shift's allocations
       const shiftAllocations = seatData.allocations.filter(
         s => s.shiftId === parseInt(selectedShift)
       );
@@ -209,13 +341,44 @@ export default function SeatManagement({ libraryId }: LibraryContextProps) {
             <Grid3X3 className="w-8 h-8 text-muted-foreground" />
           </div>
           <h3 className="font-medium">Select a Library</h3>
-          <p className="text-sm text-muted-foreground max-w-xs">
-            Please select a library to view seat management
+          <p className="text-sm text-muted-foreground">
+            Choose a library from the sidebar to manage its seating layout and allocations.
           </p>
         </div>
       </div>
     );
   }
+
+  if (isLoading || !seatData) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-72 mt-2" />
+          </div>
+          <Skeleton className="h-10 w-40" />
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+
+        <div className="border rounded-lg p-4">
+          <Skeleton className="h-6 w-32 mb-4" />
+          <div className="grid grid-cols-10 gap-2">
+            {Array.from({ length: 50 }).map((_, i) => (
+              <Skeleton key={i} className="h-10" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const { shifts } = seatData;
 
   return (
     <div className="space-y-6" data-testid="seat-management-container">
@@ -227,95 +390,95 @@ export default function SeatManagement({ libraryId }: LibraryContextProps) {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-semibold">{stats.total}</p>
-            <p className="text-xs text-muted-foreground">
-              {selectedShift === "all" ? "Total Slots" : "Total Seats"}
+            <p className="text-2xl font-bold" data-testid="stat-total-seats">
+              {seatData.totalSeats}
             </p>
+            <p className="text-xs text-muted-foreground mt-1">Total Seats</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-semibold text-green-600 dark:text-green-400">{stats.vacant}</p>
-            <p className="text-xs text-muted-foreground">Vacant</p>
+            <p className="text-2xl font-bold" data-testid="stat-occupied-seats">
+              {stats.occupied}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Occupied Shifts</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-semibold text-primary">{stats.occupied}</p>
-            <p className="text-xs text-muted-foreground">Occupied</p>
+            <p className="text-2xl font-bold" data-testid="stat-vacant-seats">
+              {stats.vacant}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Vacant Shifts</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-semibold text-destructive">{stats.blocked}</p>
-            <p className="text-xs text-muted-foreground">Blocked</p>
+            <p className="text-2xl font-bold" data-testid="stat-blocked-seats">
+              {stats.blocked}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Blocked</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-semibold text-blue-600 dark:text-blue-400">{stats.male}</p>
-            <p className="text-xs text-muted-foreground">Male</p>
+            <p className="text-2xl font-bold" data-testid="stat-male-seats">
+              {stats.male}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Male</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-semibold text-pink-600 dark:text-pink-400">{stats.female}</p>
-            <p className="text-xs text-muted-foreground">Female</p>
+            <p className="text-2xl font-bold" data-testid="stat-female-seats">
+              {stats.female}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Female</p>
           </CardContent>
         </Card>
       </div>
 
       <Card>
-        <CardHeader className="pb-4">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Grid3X3 className="w-5 h-5" />
-                Seat Grid
-              </CardTitle>
-              <CardDescription>
-                Click on a seat to view details. Hover to see student info.
-              </CardDescription>
-            </div>
-            <StatusLegend />
+        <CardHeader className="flex flex-row items-center justify-between gap-4">
+          <div className="space-y-1">
+            <CardTitle>Seat Grid View</CardTitle>
+            <CardDescription>
+              Hover on a seat to view student details, including shift and timings.
+            </CardDescription>
           </div>
+          <StatusLegend />
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="grid grid-cols-10 gap-2">
-              {[...Array(50)].map((_, i) => (
-                <Skeleton key={i} className="w-12 h-12 rounded-md" />
-              ))}
-            </div>
-          ) : (
-            <Tabs value={selectedShift} onValueChange={setSelectedShift}>
-              <TabsList className="mb-6">
-                <TabsTrigger value="all" data-testid="tab-all-shifts">
-                  All Shifts
+          <Tabs value={selectedShift} onValueChange={setSelectedShift} className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="all" data-testid="tab-all-shifts">
+                All Shifts
+              </TabsTrigger>
+              {shifts.map((shift) => (
+                <TabsTrigger
+                  key={shift.id}
+                  value={shift.id.toString()}
+                  data-testid={`tab-shift-${shift.id}`}
+                >
+                  {shift.name}
                 </TabsTrigger>
-                {seatData?.shifts.map((shift) => (
-                  <TabsTrigger 
-                    key={shift.id} 
-                    value={shift.id.toString()}
-                    data-testid={`tab-shift-${shift.id}`}
-                  >
-                    {shift.name}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+              ))}
+            </TabsList>
 
-              <TabsContent value={selectedShift} className="mt-0">
-                <ScrollArea className="w-full">
-                  <div className="min-w-[600px] p-2">
-                    <SeatGrid 
-                      seats={getFilteredSeats()} 
-                      totalSeats={seatData?.totalSeats || 0} 
-                    />
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-            </Tabs>
-          )}
+            <TabsContent value={selectedShift} className="mt-0">
+              <ScrollArea className="w-full">
+                <div className="min-w-[600px] p-2">
+                  <SeatGrid 
+                    seats={filteredSeats} 
+                    totalSeats={seatData?.totalSeats || 0}
+                    tooltipMap={selectedShift === "all" ? tooltipMap : undefined}
+                    selectedShift={selectedShift}
+                    shifts={seatData?.shifts}
+                  />
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

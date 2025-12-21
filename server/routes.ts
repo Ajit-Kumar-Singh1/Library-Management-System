@@ -6,9 +6,22 @@ import { storage } from "./storage";
 import { loginSchema } from "@shared/schema";
 import { z } from "zod";
 import connectPgSimple from "connect-pg-simple";
-import { Pool } from "@neondatabase/serverless";
+import { Pool as NeonPool } from "@neondatabase/serverless";
+import pg from "pg";
 
 const PgStore = connectPgSimple(session);
+
+// Create appropriate pool based on database URL
+function createSessionPool() {
+  const dbUrl = process.env.DATABASE_URL || "";
+  const isNeonUrl = dbUrl.includes('neon.tech') || dbUrl.includes('neon-');
+  
+  if (isNeonUrl) {
+    return new NeonPool({ connectionString: dbUrl });
+  } else {
+    return new pg.Pool({ connectionString: dbUrl });
+  }
+}
 
 declare module "express-session" {
   interface SessionData {
@@ -84,12 +97,12 @@ function requireWriteAccess(path: string) {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup session with PostgreSQL store
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = createSessionPool();
   
   app.use(
     session({
       store: new PgStore({
-        pool,
+        pool: pool as any,
         tableName: "sessions",
         createTableIfMissing: true,
       }),
@@ -672,7 +685,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           studentId: existingSub.studentId,
           subscriptionId: subscription.id,
           amount: String(paid),
-          paymentDate: planStartDate,
+          // paymentDate: planStartDate,
+          paymentDate: new Date().toISOString(),
           paymentMode: "cash",
           status: "completed",
           createdBy: req.session.userId,

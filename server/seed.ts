@@ -82,6 +82,23 @@ export async function seedDatabase() {
       description: "Students with subscriptions ending in the next 30 days",
     },
     {
+      reportName: "Expired Active Subscriptions",
+      reportKey: "expired-active-subscriptions",
+      columns: JSON.stringify([
+        { key: "studentId", label: "Student ID" },
+        { key: "studentName", label: "Name" },
+        { key: "mobileNo", label: "Mobile" },
+        { key: "seatNumber", label: "Seat No" },
+        { key: "planEndDate", label: "End Date", type: "date" },
+        { key: "subscriptionCost", label: "Plan Amount", type: "currency" },
+        { key: "pendingAmount", label: "Pending Amount", type: "currency" },
+      ]),
+      query:
+        "SELECT * FROM subscriptions WHERE library_id = $1 AND status = 'active' AND is_active = true AND plan_end_date < CURRENT_DATE",
+      description:
+        "Shows all subscriptions that are still active but whose end date has passed and need renewal",
+    },
+    {
       reportName: "Monthly Expenses",
       reportKey: "monthly-expenses",
       columns: JSON.stringify([

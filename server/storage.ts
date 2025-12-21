@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, desc, sql, asc, gte, lte, like, or, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, asc, gte, lte, like, or, inArray, lt } from "drizzle-orm";
 import {
   type User, type InsertUser,
   type Library, type InsertLibrary,
@@ -229,8 +229,6 @@ export class DatabaseStorage implements IStorage {
   async getVacantSeatsForShifts(libraryId: number, shiftIds: number[]): Promise<Seat[]> {
     const allSeats = await this.getSeatsByLibrary(libraryId);
     
-    // For each shift, find which seats are occupied
-    // A seat is only available if it's NOT occupied in ALL of the selected shifts
     const occupiedAllocations = await db.select()
       .from(seatAllocations)
       .where(and(
@@ -239,7 +237,6 @@ export class DatabaseStorage implements IStorage {
         eq(seatAllocations.isActive, true)
       ));
     
-    // Count how many of the selected shifts each seat is occupied in
     const seatOccupancyCount = new Map<number, Set<number>>();
     for (const alloc of occupiedAllocations) {
       if (!seatOccupancyCount.has(alloc.seatId)) {
@@ -248,16 +245,12 @@ export class DatabaseStorage implements IStorage {
       seatOccupancyCount.get(alloc.seatId)!.add(alloc.shiftId);
     }
     
-    // A seat is available if it's not occupied in ANY of the selected shifts
-    // (i.e., a seat occupied in shift A can still be shown if user only selected shift B)
     return allSeats.filter(s => {
       const occupiedShifts = seatOccupancyCount.get(s.id);
-      if (!occupiedShifts) return true; // Not occupied in any of the selected shifts
-      
-      // Check if ALL selected shifts are available (seat not occupied in any)
+      if (!occupiedShifts) return true;
       for (const shiftId of shiftIds) {
         if (occupiedShifts.has(shiftId)) {
-          return false; // Occupied in at least one selected shift
+          return false;
         }
       }
       return true;
@@ -334,25 +327,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async generateStudentId(libraryId: number): Promise<string> {
-    // Use MAX(id) for students in this library to ensure unique serial even after deletions
     const result = await db.select({ maxId: sql<number>`COALESCE(MAX(id), 0)` })
       .from(students)
       .where(eq(students.libraryId, libraryId));
     const nextSerial = Number(result[0]?.maxId || 0) + 1;
-    // Format: LIB{libraryId}-STD{serial} e.g., LIB001-STD000001
     return `LIB${String(libraryId).padStart(3, "0")}-STD${String(nextSerial).padStart(6, "0")}`;
   }
 
   // Subscription operations
   async getSubscriptionsByLibrary(libraryId: number): Promise<Subscription[]> {
-    // Return ALL subscriptions including closed, cancelled, renewed for management view
     return db.select().from(subscriptions)
       .where(eq(subscriptions.libraryId, libraryId))
       .orderBy(desc(subscriptions.createdOn));
   }
 
   async getActiveSubscriptionsByLibrary(libraryId: number): Promise<Subscription[]> {
-    // Return only active subscriptions (for operations that need active subs only)
     return db.select().from(subscriptions)
       .where(and(eq(subscriptions.libraryId, libraryId), eq(subscriptions.isActive, true), eq(subscriptions.status, "active")))
       .orderBy(desc(subscriptions.createdOn));
@@ -384,19 +373,47 @@ export class DatabaseStorage implements IStorage {
   }
 
   async closeSubscription(id: number): Promise<void> {
-    // Close subscription means it completed normally - student finished their plan
-    await db.update(subscriptions).set({ status: "closed", isActive: false, modifiedOn: new Date() }).where(eq(subscriptions.id, id));
-    // Also deactivate seat allocations for this subscription's student
-    const [sub] = await db.select().from(subscriptions).where(eq(subscriptions.id, id));
-    if (sub) {
-      await db.update(seatAllocations)
-        .set({ isActive: false })
-        .where(eq(seatAllocations.studentId, sub.studentId));
+    const [sub] = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.id, id));
+
+    if (!sub) return;
+
+    await db.update(subscriptions)
+      .set({
+        status: "closed",
+        isActive: false,
+        modifiedOn: new Date(),
+      })
+      .where(eq(subscriptions.id, id));
+
+    await db.update(seatAllocations)
+      .set({ isActive: false })
+      .where(eq(seatAllocations.studentId, sub.studentId));
+
+    const activeSubs = await db
+      .select()
+      .from(subscriptions)
+      .where(
+        and(
+          eq(subscriptions.studentId, sub.studentId),
+          eq(subscriptions.isActive, true),
+          eq(subscriptions.status, "active")
+        )
+      );
+
+    if (activeSubs.length === 0) {
+      await db.update(students)
+        .set({
+          status: "inactive",
+          modifiedOn: new Date(),
+        })
+        .where(eq(students.id, sub.studentId));
     }
   }
 
   async renewSubscription(studentId: number, data: InsertSubscription): Promise<Subscription> {
-    // Mark old subscription as expired AND inactive
     await db.update(subscriptions)
       .set({ status: "expired", isActive: false, modifiedOn: new Date() })
       .where(and(eq(subscriptions.studentId, studentId), eq(subscriptions.status, "active")));
@@ -479,7 +496,7 @@ export class DatabaseStorage implements IStorage {
     const occupiedSeats = await db.select({ count: sql<number>`count(distinct ${seatAllocations.seatId})` })
       .from(seatAllocations)
       .innerJoin(seats, eq(seatAllocations.seatId, seats.id))
-      .where(and(eq(seats.libraryId, libraryId), eq(seatAllocations.status, "occupied")));
+      .where(and(eq(seats.libraryId, libraryId), eq(seatAllocations.status, "occupied"), eq(seatAllocations.isActive, true)));
 
     const totalBoys = activeStudentsList.filter(s => s.gender === "male").length;
     const totalGirls = activeStudentsList.filter(s => s.gender === "female").length;
@@ -676,6 +693,30 @@ export class DatabaseStorage implements IStorage {
           ))
           .orderBy(asc(subscriptions.planEndDate));
       }
+      case "expired-active-subscriptions": {
+        const today = new Date().toISOString().split("T")[0];
+
+        return db.select({
+          id: subscriptions.id,
+          studentId: students.studentId,
+          studentName: students.studentName,
+          mobileNo: students.mobileNo,
+          seatNumber: seats.seatNumber,
+          planEndDate: subscriptions.planEndDate,
+          subscriptionCost: subscriptions.subscriptionCost,
+          pendingAmount: subscriptions.pendingAmount,
+        })
+          .from(subscriptions)
+          .innerJoin(students, eq(subscriptions.studentId, students.id))
+          .innerJoin(seats, eq(subscriptions.seatId, seats.id))
+          .where(and(
+            eq(subscriptions.libraryId, libraryId),
+            eq(subscriptions.status, "active"),
+            eq(subscriptions.isActive, true),
+            lt(subscriptions.planEndDate, today)
+          ))
+          .orderBy(asc(subscriptions.planEndDate));
+      }
       case "monthly-expenses": {
         return db.select({
           id: expenses.id,
@@ -731,7 +772,6 @@ export class DatabaseStorage implements IStorage {
       createdBy: "super_admin",
     });
 
-    // Create 4 shifts
     const shiftData = [
       { name: "Morning", startTime: "06:00", endTime: "12:00", totalHours: 6 },
       { name: "Afternoon", startTime: "12:00", endTime: "18:00", totalHours: 6 },
@@ -750,7 +790,6 @@ export class DatabaseStorage implements IStorage {
       });
     }
 
-    // Create seats
     for (let i = 1; i <= data.totalSeats; i++) {
       await this.createSeat({
         libraryId: library.id,
@@ -760,7 +799,6 @@ export class DatabaseStorage implements IStorage {
       });
     }
 
-    // Create admin user
     await this.createUser({
       username: data.adminUsername,
       password: data.adminPassword,
