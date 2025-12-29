@@ -47,6 +47,7 @@ const registerStudentSchema = z.object({
   planEndDate: z.string().min(1, "Plan end date is required"),
   subscriptionCost: z.string().min(1, "Subscription cost is required"),
   paymentMode: z.enum(["cash", "online", "both"]).default("cash"),
+  paymentDate: z.string().min(1, "Payment date is required"),
   cashAmount: z.string().transform(v => v === "" ? "0" : v).default("0"),
   onlineAmount: z.string().transform(v => v === "" ? "0" : v).default("0"),
   transactionId: z.string().optional(),
@@ -88,6 +89,7 @@ export default function RegisterStudent({ libraryId }: LibraryContextProps) {
       shiftIds: [],
       planStartDate: new Date().toISOString().split("T")[0],
       planEndDate: "",
+      paymentDate: new Date().toISOString().split("T")[0],
       subscriptionCost: "",
       paymentMode: "cash",
       cashAmount: "0",
@@ -492,6 +494,20 @@ export default function RegisterStudent({ libraryId }: LibraryContextProps) {
                             {...field} 
                             data-testid="input-plan-end"
                           />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="paymentDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

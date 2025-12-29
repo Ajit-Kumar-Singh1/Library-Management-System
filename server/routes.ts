@@ -460,7 +460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/students", requireAuth, requireWriteAccess("/register-student"), async (req, res) => {
     try {
       const { 
-        libraryId, shiftIds, seatId, planStartDate, planEndDate, 
+        libraryId, shiftIds, seatId, planStartDate, planEndDate, paymentDate,
         subscriptionCost, discount, securityDeposit,
         paymentMode, cashAmount, onlineAmount, transactionId,
         ...studentData 
@@ -544,7 +544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount: String(paid),
           cashAmount: String(cash),
           onlineAmount: String(online),
-          paymentDate: planStartDate,
+          paymentDate: paymentDate,
           paymentMode: paymentMode || "cash",
           transactionId: (paymentMode === "online" || paymentMode === "both") ? (transactionId || undefined) : undefined,
           status: "completed",
