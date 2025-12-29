@@ -535,6 +535,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // ✅ Normalize paymentDate once
+      const normalizedPaymentDate =
+        typeof paymentDate === "string" && paymentDate
+          ? paymentDate // yyyy-mm-dd from UI
+          : new Date().toISOString().split("T")[0];
+
       // Create single payment record with breakdown for all payment modes
       if (paid > 0) {
         await storage.createPayment({
@@ -544,7 +550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount: String(paid),
           cashAmount: String(cash),
           onlineAmount: String(online),
-          paymentDate: paymentDate,
+          paymentDate: normalizedPaymentDate,
           paymentMode: paymentMode || "cash",
           transactionId: (paymentMode === "online" || paymentMode === "both") ? (transactionId || undefined) : undefined,
           status: "completed",
@@ -679,6 +685,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const normalizedPaymentDate =
+        typeof req.body.paymentDate === "string" && req.body.paymentDate
+          ? req.body.paymentDate // yyyy-mm-dd from UI
+          : new Date().toISOString().split("T")[0];
+
+
       if (paid > 0) {
         await storage.createPayment({
           libraryId: existingSub.libraryId,
@@ -686,7 +698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           subscriptionId: subscription.id,
           amount: String(paid),
           // paymentDate: planStartDate,
-          paymentDate: new Date().toISOString(),
+          paymentDate: normalizedPaymentDate,
           paymentMode: "cash",
           status: "completed",
           createdBy: req.session.userId,
@@ -765,8 +777,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/payments", requireAuth, requireWriteAccess("/manage-subscriptions"), async (req, res) => {
     try {
+
+          const normalizedPaymentDate =
+          typeof req.body.paymentDate === "string" && req.body.paymentDate
+            ? req.body.paymentDate
+            : new Date().toISOString().split("T")[0];
+
       const payment = await storage.createPayment({
         ...req.body,
+        paymentDate: normalizedPaymentDate, 
         createdBy: req.session.userId,
       });
       res.json(payment);
