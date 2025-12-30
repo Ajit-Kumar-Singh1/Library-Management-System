@@ -20,14 +20,10 @@ let pool: any;
 let db: any;
 
 if (isNeonUrl) {
-  pool = new Pool({ connectionString: process.env.DATABASE_URL,  ssl: {
-    rejectUnauthorized: false
-  } });
+  pool = new Pool({ connectionString: process.env.DATABASE_URL});
   db = drizzleNeon({ client: pool, schema });
 } else {
-  pool = new pg.Pool({ connectionString: process.env.DATABASE_URL,  ssl: {
-    rejectUnauthorized: false
-  } });
+  pool = new pg.Pool({ connectionString: process.env.DATABASE_URL});
   db = drizzlePg({ client: pool, schema });
 }
 
