@@ -17,7 +17,7 @@ function createSessionPool() {
   const isNeonUrl = dbUrl.includes("neon.tech") || dbUrl.includes("neon-");
 
   if (isNeonUrl) {
-    return new NeonPool({ connectionString: dbUrl });
+    return new NeonPool({ connectionString: dbUrl,ssl: { rejectUnauthorized: false } });
   } else {
     return new pg.Pool({
       connectionString: dbUrl,
