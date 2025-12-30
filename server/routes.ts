@@ -14,20 +14,14 @@ const PgStore = connectPgSimple(session);
 // Create appropriate pool based on database URL
 function createSessionPool() {
   const dbUrl = process.env.DATABASE_URL || "";
-  const isNeonUrl = dbUrl.includes("neon.tech") || dbUrl.includes("neon-");
-
+  const isNeonUrl = dbUrl.includes('neon.tech') || dbUrl.includes('neon-');
+  
   if (isNeonUrl) {
-    return new NeonPool({ connectionString: dbUrl,ssl: { rejectUnauthorized: false } });
+    return new NeonPool({ connectionString: dbUrl });
   } else {
-    return new pg.Pool({
-      connectionString: dbUrl,
-      ssl: {
-        rejectUnauthorized: false,
-      },
-    });
+    return new pg.Pool({ connectionString: dbUrl });
   }
 }
-
 
 declare module "express-session" {
   interface SessionData {
