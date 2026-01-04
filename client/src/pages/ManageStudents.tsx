@@ -48,6 +48,9 @@ const manageStudentSchema = z.object({
   address: z.string().optional(),
   status: z.enum(["active", "inactive"]),
   description: z.string().optional(),
+    // ✅ NEW (seat change)
+  changeSeat: z.boolean().optional(),
+  newSeatId: z.string().optional(),
 });
 
 type ManageStudentForm = z.infer<typeof manageStudentSchema>;
@@ -67,6 +70,7 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
   const { canWrite } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<StudentWithSubscription | null>(null);
+  const [changeSeat, setChangeSeat] = useState(false);
   const [showRenewDialog, setShowRenewDialog] = useState(false);
   const [renewalData, setRenewalData] = useState({
     planStartDate: new Date().toISOString().split("T")[0],
@@ -102,6 +106,48 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
     queryKey: ["/api/shifts", libraryId],
     enabled: !!libraryId,
   });
+
+  // const { data: vacantSeats = [], refetch: refetchVacantSeats } = useQuery({
+  //   queryKey: [
+  //     "/api/seats/vacant",
+  //     selectedStudent?.subscription?.shiftId,
+  //   ],
+  //   queryFn: async () => {
+  //     const res = await apiRequest(
+  //       "GET",
+  //       `/api/seats/vacant/${selectedStudent?.subscription?.shiftId}`
+  //     );
+  //     return res.json();
+  //   },
+  //   enabled: false,
+  // });
+
+    const { data: vacantSeats = [], refetch: refetchVacantSeats } = useQuery({
+    queryKey: [
+      "/api/seats/vacant",
+      libraryId,
+      selectedStudent?.subscription?.shiftIds,
+    ],
+    queryFn: async () => {
+      if (!selectedStudent?.subscription?.shiftIds || !libraryId) {
+        return [];
+      }
+
+      const shiftIds = JSON.parse(selectedStudent.subscription.shiftIds);
+
+      const res = await apiRequest(
+        "GET",
+        `/api/seats/vacant/${libraryId}?shiftIds=${encodeURIComponent(
+          JSON.stringify(shiftIds)
+        )}`
+      );
+
+      return res.json();
+    },
+    enabled: false,
+  });
+
+
 
   const searchMutation = useMutation({
     mutationFn: async (query: string) => {
@@ -187,7 +233,11 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
       address: student.address || "",
       status: student.status as "active" | "inactive",
       description: student.description || "",
+      changeSeat: false,
+      newSeatId: "",
     });
+
+    setChangeSeat(false);
     
     if (student.subscription) {
       setRenewalData({
@@ -207,8 +257,12 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
   };
 
   const onSubmit = (data: ManageStudentForm) => {
-    updateMutation.mutate(data);
+    updateMutation.mutate({
+      ...data,
+      changeSeat,
+    });
   };
+
 
   const handleRenew = () => {
     if (selectedStudent?.status === "active") {
@@ -490,6 +544,60 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
                     </AlertDescription>
                   </Alert>
                 )}
+
+              {selectedStudent?.subscription && (
+                <div className="space-y-4 border rounded-md p-4">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={changeSeat}
+                      onChange={(e) => {
+                        setChangeSeat(e.target.checked);
+                        form.setValue("changeSeat", e.target.checked);
+
+                        if (e.target.checked) {
+                          refetchVacantSeats();
+                        } else {
+                          form.setValue("newSeatId", "");
+                        }
+                      }}
+                    />
+                    <label className="text-sm font-medium">
+                      Change Seat (same shift only)
+                    </label>
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="newSeatId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Vacant Seat</FormLabel>
+                        <Select
+                          disabled={!changeSeat}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select vacant seat" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {vacantSeats.map((seat: any) => (
+                              <SelectItem key={seat.id} value={String(seat.id)}>
+                                Seat #{seat.seatNumber}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+
 
                 <div className="flex justify-end gap-3">
                   <Button
