@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, desc, sql, asc, gte, lte, like, or, inArray, lt, Transaction } from "drizzle-orm";
+import { eq, and, desc, sql, asc, gte, lte, like, or, inArray, lt } from "drizzle-orm";
 import {
   type User, type InsertUser,
   type Library, type InsertLibrary,
@@ -321,120 +321,10 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  // async updateStudent(id: number, data: Partial<InsertStudent>): Promise<Student | undefined> {
-  //   const [updated] = await db.update(students).set({ ...data, modifiedOn: new Date() }).where(eq(students.id, id)).returning();
-  //   return updated;
-  // }
-
-    async updateStudent(
-    id: number,
-    data: Partial<InsertStudent> & {
-      changeSeat?: boolean;
-      newSeatId?: number;
-      modifiedBy?: string;
-    }
-  ): Promise<Student | undefined> {
-
-    return await db.transaction(async (tx: Transaction) => {
-
-      // 1️⃣ Separate seat-change fields from student fields
-      const {
-        changeSeat,
-        newSeatId,
-        ...studentUpdateData
-      } = data;
-
-      const normalizedSeatId = newSeatId ? Number(newSeatId) : undefined;
-      // 2️⃣ ORIGINAL behavior preserved (generic update)
-      const allowedStudentFields = {
-        studentName: studentUpdateData.studentName,
-        mobileNo: studentUpdateData.mobileNo,
-        emailId: studentUpdateData.emailId,
-        gender: studentUpdateData.gender,
-        guardianName: studentUpdateData.guardianName,
-        guardianPhone: studentUpdateData.guardianPhone,
-        address: studentUpdateData.address,
-        status: studentUpdateData.status,
-        description: studentUpdateData.description,
-        modifiedBy: studentUpdateData.modifiedBy,
-        modifiedOn: new Date(),
-      };
-
-      const [updatedStudent] = await tx
-        .update(students)
-        .set(allowedStudentFields)
-        .where(eq(students.id, id))
-        .returning();
-
-
-      // If no seat change requested → DONE
-      if (!changeSeat || !newSeatId) {
-        return updatedStudent;
-      }
-
-      // 3️⃣ Fetch active subscription
-      const [activeSub] = await tx
-        .select()
-        .from(subscriptions)
-        .where(and(
-          eq(subscriptions.studentId, id),
-          eq(subscriptions.status, "active"),
-          eq(subscriptions.isActive, true)
-        ));
-
-      if (!activeSub) {
-        throw new Error("Active subscription not found for seat change");
-      }
-
-      // 4️⃣ Parse existing shiftIds (SAME shifts)
-      const shiftIds: number[] = JSON.parse(activeSub.shiftIds || "[]");
-
-      // 5️⃣ Validate new seat vacancy for SAME shifts
-      const vacantSeats = await this.getVacantSeatsForShifts(
-        activeSub.libraryId,
-        shiftIds
-      );
-
-      const isSeatVacant = vacantSeats.some(
-        seat => seat.id === normalizedSeatId
-      );
-
-      if (!isSeatVacant) {
-        throw new Error("Selected seat is not vacant for current shifts");
-      }
-
-      // 6️⃣ Release old seat allocations
-      await tx.update(seatAllocations)
-        .set({ isActive: false })
-        .where(and(
-          eq(seatAllocations.studentId, id),
-          eq(seatAllocations.isActive, true)
-        ));
-
-      // 7️⃣ Update subscription with new seat
-      await tx.update(subscriptions)
-        .set({
-          seatId: normalizedSeatId,
-          modifiedOn: new Date(),
-        })
-        .where(eq(subscriptions.id, activeSub.id));
-
-      // 8️⃣ Create new seat allocations for SAME shifts
-      for (const shiftId of shiftIds) {
-        await tx.insert(seatAllocations).values({
-          seatId: normalizedSeatId,
-          shiftId,
-          studentId: id,
-          status: "occupied",
-          gender: updatedStudent.gender,
-          createdBy: data.modifiedBy,
-        });
-      }
-
-      return updatedStudent;
-    });
+  async updateStudent(id: number, data: Partial<InsertStudent>): Promise<Student | undefined> {
+    const [updated] = await db.update(students).set({ ...data, modifiedOn: new Date() }).where(eq(students.id, id)).returning();
+    return updated;
   }
-
 
   async generateStudentId(libraryId: number): Promise<string> {
     const result = await db.select({ maxId: sql<number>`COALESCE(MAX(id), 0)` })

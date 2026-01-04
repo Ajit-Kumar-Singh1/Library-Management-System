@@ -567,17 +567,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/students/:id", requireAuth, requireWriteAccess("/manage-students"), async (req, res) => {
     try {
-
-      const {
-        changeSeat,
-        newSeatId,
-      } = req.body;
-
-      // ✅ If seat change requested, basic validation
-      if (changeSeat && !newSeatId) {
-        return res.status(400).json({ message: "New seat is required for seat change" });
-      }
-
       const student = await storage.updateStudent(parseInt(req.params.id), {
         ...req.body,
         modifiedBy: req.session.userId,
