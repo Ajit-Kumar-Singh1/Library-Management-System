@@ -478,82 +478,6 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          value={field.value}
-                          disabled={!selectedStudent}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-edit-status">
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="inactive">Inactive</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Address</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Enter full address" 
-                          className="resize-none" 
-                          rows={2}
-                          {...field} 
-                          disabled={!selectedStudent}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Additional Notes</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Any additional notes" 
-                          className="resize-none" 
-                          rows={2}
-                          {...field} 
-                          disabled={!selectedStudent}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {!hasWriteAccess && selectedStudent && (
-                  <Alert className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800">
-                    <Lock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-                    <AlertDescription className="text-yellow-700 dark:text-yellow-300">
-                      You have read-only access. Contact your administrator to request write permissions.
-                    </AlertDescription>
-                  </Alert>
-                )}
-
                 {selectedStudent?.subscription && (
                   <div className="grid grid-cols-2 gap-4 border rounded-md p-4">
                     <FormField
@@ -638,6 +562,82 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
                 </div>
               )}
 
+
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          value={field.value}
+                          disabled={!selectedStudent}
+                        >
+                          <FormControl>
+                            <SelectTrigger data-testid="select-edit-status">
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter full address" 
+                          className="resize-none" 
+                          rows={2}
+                          {...field} 
+                          disabled={!selectedStudent}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Additional Notes</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Any additional notes" 
+                          className="resize-none" 
+                          rows={2}
+                          {...field} 
+                          disabled={!selectedStudent}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {!hasWriteAccess && selectedStudent && (
+                  <Alert className="bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800">
+                    <Lock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                    <AlertDescription className="text-yellow-700 dark:text-yellow-300">
+                      You have read-only access. Contact your administrator to request write permissions.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 <div className="flex justify-end gap-3">
                   <Button
