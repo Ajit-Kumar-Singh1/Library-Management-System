@@ -331,6 +331,8 @@ export class DatabaseStorage implements IStorage {
     data: Partial<InsertStudent> & {
       changeSeat?: boolean;
       newSeatId?: number;
+      planStartDate?: string;
+      planEndDate?: string;
       modifiedBy?: string;
     }
   ): Promise<Student | undefined> {
@@ -341,6 +343,8 @@ export class DatabaseStorage implements IStorage {
       const {
         changeSeat,
         newSeatId,
+        planStartDate,
+        planEndDate,
         ...studentUpdateData
       } = data;
 
@@ -381,6 +385,17 @@ export class DatabaseStorage implements IStorage {
           eq(subscriptions.status, "active"),
           eq(subscriptions.isActive, true)
         ));
+
+          // 3️⃣ Update Plan Dates (NEW FEATURE)
+      if (planStartDate || planEndDate) {
+        await tx.update(subscriptions)
+          .set({
+            planStartDate: planStartDate ?? activeSub.planStartDate,
+            planEndDate: planEndDate ?? activeSub.planEndDate,
+            modifiedOn: new Date(),
+          })
+          .where(eq(subscriptions.id, activeSub.id));
+      }
 
       if (!activeSub) {
         throw new Error("Active subscription not found for seat change");

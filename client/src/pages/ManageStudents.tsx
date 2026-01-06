@@ -48,6 +48,9 @@ const manageStudentSchema = z.object({
   address: z.string().optional(),
   status: z.enum(["active", "inactive"]),
   description: z.string().optional(),
+   // ✅ NEW
+  planStartDate: z.string().optional(),
+  planEndDate: z.string().optional(),
     // ✅ NEW (seat change)
   changeSeat: z.boolean().optional(),
   newSeatId: z.string().optional(),
@@ -233,6 +236,9 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
       address: student.address || "",
       status: student.status as "active" | "inactive",
       description: student.description || "",
+       // ✅ NEW
+      planStartDate: student.subscription?.planStartDate || "",
+      planEndDate: student.subscription?.planEndDate || "",
       changeSeat: false,
       newSeatId: "",
     });
@@ -260,6 +266,9 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
     updateMutation.mutate({
       ...data,
       changeSeat,
+          // send only if subscription exists
+    planStartDate: selectedStudent?.subscription ? data.planStartDate : undefined,
+    planEndDate: selectedStudent?.subscription ? data.planEndDate : undefined,
     });
   };
 
@@ -544,6 +553,37 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
                     </AlertDescription>
                   </Alert>
                 )}
+
+                {selectedStudent?.subscription && (
+                  <div className="grid grid-cols-2 gap-4 border rounded-md p-4">
+                    <FormField
+                      control={form.control}
+                      name="planStartDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Plan Start Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="planEndDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Plan End Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
 
               {selectedStudent?.subscription && (
                 <div className="space-y-4 border rounded-md p-4">
