@@ -371,6 +371,7 @@ export class DatabaseStorage implements IStorage {
         .returning();
 
 
+        
       // If no seat change requested → DONE
       if (!changeSeat || !newSeatId) {
         return updatedStudent;

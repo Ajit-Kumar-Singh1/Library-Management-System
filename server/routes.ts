@@ -588,6 +588,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  
   // ================== SUBSCRIPTION ROUTES ==================
   
   app.get("/api/subscriptions/:libraryId", requireAuth, async (req, res) => {
