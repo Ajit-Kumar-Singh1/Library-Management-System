@@ -14,4 +14,4 @@ COPY . .
 EXPOSE 5001
 
 # Start your app (make sure "start" exists in package.json)
-CMD ["npm", "run","start"]
+CMD ["npm", "run","dev"]
