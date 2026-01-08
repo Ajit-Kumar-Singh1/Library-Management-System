@@ -13,7 +13,7 @@ services:
       - db_data:/var/lib/postgresql/data
 
   backend:
-    image: myrepo/library-management-system-backend:${IMAGE_TAG}
+    image: library-management-system-backend:${IMAGE_TAG}
     build:
       context: .
       dockerfile: Dockerfile
