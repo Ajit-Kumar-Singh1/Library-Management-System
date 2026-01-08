@@ -346,7 +346,7 @@ export default function ManageStudents({ libraryId }: LibraryContextProps) {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Edit className="w-5 h-5" />
-              Student Details
+              Student Detailss
             </CardTitle>
             <CardDescription>
               {selectedStudent 
